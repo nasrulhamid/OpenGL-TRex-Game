@@ -9,6 +9,7 @@
 
 #include <iostream>
 #include <iomanip>
+#include <time.h>
 #include <GL/glut.h>
 #include "tga.h"
 #include "tga.c"
@@ -25,12 +26,77 @@ bool stOnGround = true;
 bool stCollision = false;
 
 int obsI=0; 
-double obsXpos;
+double obsXpos, obsXposmut, obsXpos2, obsXposmut2;
 double grndXpos;
 
-const float tSpeedMin =1.0f, tSpeedMax = 3.0f, tStep=0.2f;
+const float tSpeedMin =1.0f, tSpeedMax = 3.0f, tStep=0.1f;
 double tSpeed = tSpeedMin; 
 long score=0;
+
+void load_BMP_texture(char *filename) {
+
+    FILE *file;
+    short int bpp;
+    short int planes;
+    long size;
+    unsigned int texture;
+
+    long imwidth;
+    long imheight;
+    char *imdata;
+
+    file = fopen(filename, "rb");
+    fseek(file, 18, SEEK_CUR);
+
+    fread(&imwidth, 4, 1, file);
+    fread(&imheight, 4, 1, file);
+    size = imwidth * imheight * 3;
+
+    fread(&bpp, 2, 1, file);
+    fread(&planes, 2, 1, file);
+
+    fseek(file, 24, SEEK_CUR);
+    imdata = (char *)malloc(size);
+
+    fread(imdata, size, 1, file);
+
+	char temp;
+    for(long i = 0; i < size; i+=3){
+        temp = imdata[i];
+        imdata[i] = imdata[i+2];
+        imdata[i+2] = temp;
+    }
+
+    fclose(file);
+
+    glGenTextures(1, &texture); // then we need to tell OpenGL that we are generating a texture
+    glBindTexture(GL_TEXTURE_2D, texture); // now we bind the texture that we are working with
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, imwidth, imheight, 0, GL_RGB, GL_UNSIGNED_BYTE, imdata);
+
+    free(imdata); // free the texture
+}
+
+void glTga(void)
+{
+	glEnable (GL_DEPTH_TEST);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	
+	char f[100];
+	strcpy(f,"sand.tga");
+	loadTGA(f, 1);//load gambar texture ke bidang
+	strcpy(f,"box.tga");
+	loadTGA(f, 2);//load gambar texture ke bidang
+	//~ strcpy(f,"dskin.tga");
+	//~ loadTGA(f, 3);//load gambar texture ke bidang
+	//load_BMP_texture("dskin.bmp");
+}
 
 void grid(int baris, int kolom) {
 
@@ -106,6 +172,25 @@ void strPrint(int x, int y, float r, float g, float b, void* font, string str)
 	}
 }
 
+
+void sprJump(float time)
+{
+	if (!stCollision){
+		velocityY += gravity * time;        // Apply gravity to vertical velocity
+		positionY -= velocityY * time;      // Apply vertical velocity to X position
+		 //positionX += velocityX * time;      // Apply horizontal velocity to X position
+		 
+		 if(positionY < 0.0){
+			  positionY = 0.0;
+			  velocityY = 0.0;
+			  stOnGround = true;
+		 }
+		 
+		 //if(positionX < 0 || positionX > 10)
+		 //    velocityX *= -1;
+	 }
+}
+
 void Timer(int iUnused)
 {		
 	if(!stCollision){ 
@@ -116,18 +201,37 @@ void Timer(int iUnused)
 				
 		if(score%50==0 && tSpeed<tSpeedMax) tSpeed+=tStep;		
 		if(grndXpos>0) grndXpos-=tSpeed; else grndXpos=80;
-		if(obsXpos>0) obsXpos-=tSpeed; else obsXpos=80;
 		
+		//OBSTACLE
+		if(obsXpos>0) obsXpos-=tSpeed; else {
+			srand (time(NULL));
+			obsXposmut = rand() % 10;
+			obsXpos=60+obsXposmut*2;
+		}
+		
+		//~ if(obsXpos2>0) obsXpos2-=tSpeed; else {
+			//~ srand (time(NULL));
+			//~ obsXposmut2 = rand() % 10;
+			//~ obsXpos2=100+obsXposmut2*2;
+		//~ }
+		
+		//T-REX
+		if (!stOnGround) sprJump(0.2);
+		
+		//DETEKSI COLLISION
 		if (positionX+3<obsXpos+4 && positionX+10>=obsXpos && positionY<=6) {
 			stCollision = true; tSpeed=0; stRun=false;
 		}
+		//~ if (positionX+3<obsXpos2+4 && positionX+10>=obsXpos2 && positionY<=6) {
+			//~ stCollision = true; tSpeed=0; stRun=false;
+		//~ }
 		score++;
 	}else{
 		
 	}
 		
 		glutPostRedisplay();
-		glutTimerFunc(12, Timer, 0);
+		glutTimerFunc(28, Timer, 0);
 }
 
 void genKarakter(int idKarakter){
@@ -227,6 +331,11 @@ void processSpecialKeys(int key, int x, int y) {
 				stOnGround = false;
 			}
 			break;
+		case GLUT_KEY_DOWN:
+			positionY = 0.0;
+			velocityY = 0.0;
+			stOnGround = true;
+			break;
 	}
 }
 
@@ -275,7 +384,7 @@ void resetValues(){
 	stCollision=false;
 	tSpeed=tSpeedMin;
 	positionX=0; positionY=0;
-	obsXpos=0; grndXpos=0;
+	obsXpos=0; obsXpos2=0; grndXpos=0;
 	stRun=true;
 	score=0;
 }
@@ -335,23 +444,6 @@ void releaseNormalKeys(unsigned char key, int x, int y){
 	}
 }
 
-void sprJump(float time)
-{
-	if (!stCollision){
-		velocityY += gravity * time;        // Apply gravity to vertical velocity
-		positionY -= velocityY * time;      // Apply vertical velocity to X position
-		 //positionX += velocityX * time;      // Apply horizontal velocity to X position
-		 
-		 if(positionY < 0.0){
-			  positionY = 0.0;
-			  velocityY = 0.0;
-			  stOnGround = true;
-		 }
-		 
-		 //if(positionX < 0 || positionX > 10)
-		 //    velocityX *= -1;
-	 }
-}
 
 void display()
 {	
@@ -376,16 +468,28 @@ void display()
 	glPushMatrix();
 	
 	glTranslatef(obsXpos,5,-1);
-	glScalef(5,8,0);
+	glScalef(3,6,0);
 	glColor3ub(255,255,255);
 	drawObstacle();
+	
 	glPopMatrix();
+	//~ glPushMatrix();
+	
+	//~ glTranslatef(obsXpos2,5,-1);
+	//~ glScalef(3,6,0);
+	//~ glColor3ub(255,255,255);
+	//~ drawObstacle();
+	
+	//~ glPopMatrix();
 	
 //TREX
 	glPushMatrix();
-	if (!stOnGround) {sprJump(0.1); glTranslatef(positionX,positionY,0);}
+	if (!stOnGround) {
+		//~ sprJump(0.1); 
+		glTranslatef(positionX,positionY,0);
+	}
 	glTranslatef(3,1,-1);
-	glScalef(0.5,0.5,0);
+	glScalef(0.4,0.4,0);
 	glColor3ub(79,90,47);
 	//glLineWidth(2);
 	genKarakter(1);	
@@ -397,6 +501,12 @@ void display()
 	strPrint(0,0,255,255,255,GLUT_BITMAP_HELVETICA_18,"SCORE: "+to_string(score));  
 	glPopMatrix();	
 	
+	//debug
+	//~ glPushMatrix();
+	//~ glTranslatef(60,10,-1);
+	//~ strPrint(0,0,255,255,255,GLUT_BITMAP_HELVETICA_18,to_string(obsXposmut)+" -- "+to_string(obsXposmut2));  
+	//~ glPopMatrix();	
+	
 //COLLISION DETECTION
 	if (stCollision) {
 		glPushMatrix();
@@ -404,72 +514,25 @@ void display()
 		strPrint(0,0,255,255,255,GLUT_BITMAP_HELVETICA_18,"RESTART? (Y/N)");  
 		glPopMatrix();
 	}
-
+	
+//tombol
+	//~ glEnable(GL_TEXTURE_2D);
+	//~ glBindTexture (GL_TEXTURE_2D, 3); //bind ke texture n
+	//~ char fl[100];
+	//~ strcpy(fl, "tombol.bmp");
+	//~ load_BMP_texture(fl);
+	//~ glPushMatrix();
+	//~ glTranslatef(33,15,0); 
+	//~ glBegin(GL_POLYGON);
+		//~ glTexCoord2f(1, 1);	glVertex2f( 1, 1);
+		//~ glTexCoord2f(0, 1);	glVertex2f(-1, 1);
+		//~ glTexCoord2f(0, 0);	glVertex2f(-1,-1);
+		//~ glTexCoord2f(1, 0);	glVertex2f( 1,-1);
+	//~ glEnd();
+	//~ glPopMatrix();
+	//~ glDisable(GL_TEXTURE_2D);
 	
 	glutSwapBuffers();
-}
-
-void load_BMP_texture(char *filename) {
-
-    FILE *file;
-    short int bpp;
-    short int planes;
-    long size;
-    unsigned int texture;
-
-    long imwidth;
-    long imheight;
-    char *imdata;
-
-    file = fopen(filename, "rb");
-    fseek(file, 18, SEEK_CUR);
-
-    fread(&imwidth, 4, 1, file);
-    fread(&imheight, 4, 1, file);
-    size = imwidth * imheight * 3;
-
-    fread(&bpp, 2, 1, file);
-    fread(&planes, 2, 1, file);
-
-    fseek(file, 24, SEEK_CUR);
-    imdata = (char *)malloc(size);
-
-    fread(imdata, size, 1, file);
-
-	char temp;
-    for(long i = 0; i < size; i+=3){
-        temp = imdata[i];
-        imdata[i] = imdata[i+2];
-        imdata[i+2] = temp;
-    }
-
-    fclose(file);
-
-    glGenTextures(1, &texture); // then we need to tell OpenGL that we are generating a texture
-    glBindTexture(GL_TEXTURE_2D, texture); // now we bind the texture that we are working with
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, imwidth, imheight, 0, GL_RGB, GL_UNSIGNED_BYTE, imdata);
-
-    free(imdata); // free the texture
-}
-
-void glTga(void)
-{
-	glEnable (GL_DEPTH_TEST);
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	
-	char f[100];
-	strcpy(f,"sand.tga");
-	loadTGA(f, 1);//load gambar texture ke bidang
-	strcpy(f,"box.tga");
-	loadTGA(f, 2);//load gambar texture ke bidang
-	//load_BMP_texture("dskin.bmp");
 }
 
 int main(int argc, char **argv)
