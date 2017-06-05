@@ -9,7 +9,7 @@
 
 #include <iostream>
 #include <iomanip>
-#include <ctime>
+#include <time.h>
 #include <GL/glut.h>
 #include "tga.h"
 #include "tga.c"
@@ -29,22 +29,9 @@ int obsI=0;
 double obsXpos, obsXposmut, obsXpos2, obsXposmut2;
 double grndXpos;
 
-const float tSpeedMin =1.0f, tSpeedMax = 3.0f, tStep=0.1f;
+const float tSpeedMin =1.0f, tSpeedMax = 3.0f, tStep=0.2f;
 double tSpeed = tSpeedMin; 
 long score=0;
-
-void latar(){
-    glBegin(GL_POLYGON);
-        glColor3ub(132,208,228);
-        glVertex2f(0, 20); //vertex 1 x,y kebawah - kekiri -
-        glColor3ub(118,207,230);
-        glVertex2f(80, 20);
-        glColor3ub(233, 244, 237);
-        glVertex2f(80, 0);
-        glColor3ub(218, 236, 241);
-        glVertex2f(0, 0);
-     glEnd();
-}
 
 void load_BMP_texture(char *filename) {
 
@@ -138,7 +125,7 @@ void grid(int baris, int kolom) {
 }
 
 void changeSize(int w, int h) {
-	float ratio = w/80;
+
 	// Prevent a divide by zero, when window is too short
 	// (you cant make a window of zero width).
 	if (h == 0)	h = 1;
@@ -165,7 +152,7 @@ void changeSize(int w, int h) {
 	//gluPerspective(0,1,1,100);
 	
 	//glOrtho(-w/20, w/20, -h/20, h/20, 1.f, -1.f);
-	glOrtho(0, (float)w/ratio, 0, (float)h/ratio, 1.f, -1.f);
+	glOrtho(0, w/10, 0, h/10, 1.f, -1.f);
 	//glOrtho(-40, 40, -20, 20, 1.f, -1.f);
 
 	// Get Back to the Modelview
@@ -186,23 +173,6 @@ void strPrint(int x, int y, float r, float g, float b, void* font, string str)
 }
 
 
-void sprJump(float time)
-{	
-	if (!stCollision){
-		velocityY += gravity * time;        // Apply gravity to vertical velocity
-		positionY -= velocityY * time;      // Apply vertical velocity to X position
-		 //positionX += velocityX * time;      // Apply horizontal velocity to X position
-		 
-		 if(positionY < 0.0){
-			  positionY = 0.0;
-			  velocityY = 0.0;
-			  stOnGround = true;
-		 }
-		 
-		 //if(positionX < 0 || positionX > 10)
-		 //    velocityX *= -1;
-	 }
-}
 
 void Timer(int iUnused)
 {		
@@ -222,31 +192,22 @@ void Timer(int iUnused)
 			obsXpos=80+obsXposmut*2;
 		}
 		
-		//~ if(obsXpos2>0) obsXpos2-=tSpeed; else {
-			//~ srand (time(NULL));
-			//~ obsXposmut2 = rand() % 10;
-			//~ obsXpos2=100+obsXposmut2*2;
-		//~ }
-		
-		//T-REX
-		if (!stOnGround) sprJump(0.2);
-		
-		//DETEKSI COLLISION
-		if (positionX+3<obsXpos+2 && positionX+10>=obsXpos && positionY<=6) {
-			stCollision = true; tSpeed=0; stRun=false;
-			system("canberra-gtk-play -f collision.ogg &");
+		if(obsXpos2>0) obsXpos2-=tSpeed; else {
+			srand (time(NULL));
+			obsXposmut2 = rand() % 10;
+			obsXpos2=140+obsXposmut2*2;
 		}
-		//~ if (positionX+3<obsXpos2+4 && positionX+10>=obsXpos2 && positionY<=6) {
-			//~ stCollision = true; tSpeed=0; stRun=false;
-		//~ }
+		
+		if (positionX+3<obsXpos+4 && positionX+10>=obsXpos && positionY<=6) {
+			stCollision = true; tSpeed=0; stRun=false;
+		}
 		score++;
-		if (score%500==0) system("canberra-gtk-play -f score.ogg &");
 	}else{
 		
 	}
 		
 		glutPostRedisplay();
-		glutTimerFunc(28, Timer, 0);
+		glutTimerFunc(12, Timer, 0);
 }
 
 void genKarakter(int idKarakter){
@@ -301,7 +262,7 @@ void genKarakter(int idKarakter){
 		glEnd();
 		//kaki
 		glPushMatrix();
-			if(stRun && stOnGround)glTranslatef(0,(stKika?1:0),0);
+			if(stRun)glTranslatef(0,(stKika?1:0),0);
 			glBegin(GL_TRIANGLE_STRIP);		//kiri
 				glVertex2f(6,3.3);		//perut
 				glVertex2f(6.5,2.7);		
@@ -313,7 +274,7 @@ void genKarakter(int idKarakter){
 			glEnd();
 		glPopMatrix();
 		glPushMatrix();
-			if(stRun && stOnGround)glTranslatef(0,(stKika?0:1),0);
+			if(stRun)glTranslatef(0,(stKika?0:1),0);
 			glBegin(GL_TRIANGLE_STRIP);		//kanan
 				glVertex2f(5.3,3.3);	// perut	
 				glVertex2f(4.3,2);		
@@ -342,15 +303,9 @@ void processSpecialKeys(int key, int x, int y) {
 	switch(key) {
 		case GLUT_KEY_UP:
 			if(stOnGround){
-				system("canberra-gtk-play -f jump.ogg &");
 				velocityY = -12.0f;
 				stOnGround = false;
 			}
-			break;
-		case GLUT_KEY_DOWN:
-			positionY = 0.0;
-			velocityY = 0.0;
-			stOnGround = true;
 			break;
 	}
 }
@@ -382,11 +337,11 @@ void drawGround(){
 	glBegin(GL_POLYGON);
 		glTexCoord2f( 0, 0);
 		glVertex2f(-100, 0);
-		glTexCoord2f(30, 0);
+		glTexCoord2f( 100, 0);
 		glVertex2f( 100, 0);
-		glTexCoord2f(30, 1);
+		glTexCoord2f( 100, 3);
 		glVertex2f( 100, 3);
-		glTexCoord2f( 0, 1);
+		glTexCoord2f( 0, 3);
 		glVertex2f(-100, 3);
 		/*for (int i =-80; i<80; i+=3){
 			glVertex2f(	 i, 0);
@@ -400,7 +355,7 @@ void resetValues(){
 	stCollision=false;
 	tSpeed=tSpeedMin;
 	positionX=0; positionY=0;
-	obsXpos=0; obsXpos2=0; grndXpos=0;
+	obsXpos=0; grndXpos=0;
 	stRun=true;
 	score=0;
 }
@@ -424,7 +379,6 @@ void processNormalKeys(unsigned char key, int x, int y){
 			break;
 		case ' ':		// SPACEBAR
 			if(stOnGround){
-				system("canberra-gtk-play -f jump.ogg &");
 				velocityY = -12.0f;
 				stOnGround = false;
 			}
@@ -461,6 +415,23 @@ void releaseNormalKeys(unsigned char key, int x, int y){
 	}
 }
 
+void sprJump(float time)
+{
+	if (!stCollision){
+		velocityY += gravity * time;        // Apply gravity to vertical velocity
+		positionY -= velocityY * time;      // Apply vertical velocity to X position
+		 //positionX += velocityX * time;      // Apply horizontal velocity to X position
+		 
+		 if(positionY < 0.0){
+			  positionY = 0.0;
+			  velocityY = 0.0;
+			  stOnGround = true;
+		 }
+		 
+		 //if(positionX < 0 || positionX > 10)
+		 //    velocityX *= -1;
+	 }
+}
 
 void display()
 {	
@@ -485,28 +456,25 @@ void display()
 	glPushMatrix();
 	
 	glTranslatef(obsXpos,5,-1);
-	glScalef(3,6,0);
+	glScalef(5,8,0);
 	glColor3ub(255,255,255);
 	drawObstacle();
 	
 	glPopMatrix();
-	//~ glPushMatrix();
+	glPushMatrix();
 	
-	//~ glTranslatef(obsXpos2,5,-1);
-	//~ glScalef(3,6,0);
-	//~ glColor3ub(255,255,255);
-	//~ drawObstacle();
+	glTranslatef(obsXpos2,5,-1);
+	glScalef(5,8,0);
+	glColor3ub(255,255,255);
+	drawObstacle();
 	
-	//~ glPopMatrix();
+	glPopMatrix();
 	
 //TREX
 	glPushMatrix();
-	if (!stOnGround) {
-		//~ sprJump(0.1); 
-		glTranslatef(positionX,positionY,0);
-	}
-	glTranslatef(3,1.8,-1);
-	glScalef(0.4,0.4,0);
+	if (!stOnGround) {sprJump(0.1); glTranslatef(positionX,positionY,0);}
+	glTranslatef(3,1,-1);
+	glScalef(0.5,0.5,0);
 	glColor3ub(79,90,47);
 	//glLineWidth(2);
 	genKarakter(1);	
@@ -517,12 +485,6 @@ void display()
 	glTranslatef(60,17,-1);
 	strPrint(0,0,255,255,255,GLUT_BITMAP_HELVETICA_18,"SCORE: "+to_string(score));  
 	glPopMatrix();	
-	
-	//debug
-	//~ glPushMatrix();
-	//~ glTranslatef(60,10,-1);
-	//~ strPrint(0,0,255,255,255,GLUT_BITMAP_HELVETICA_18,to_string(obsXposmut)+" -- "+to_string(obsXposmut2));  
-	//~ glPopMatrix();	
 	
 //COLLISION DETECTION
 	if (stCollision) {
@@ -548,7 +510,7 @@ void display()
 	//~ glEnd();
 	//~ glPopMatrix();
 	//~ glDisable(GL_TEXTURE_2D);
-	latar();
+	
 	glutSwapBuffers();
 }
 
@@ -556,7 +518,7 @@ int main(int argc, char **argv)
 {
 	glutInit( &argc, argv );
 	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
-	glutInitWindowSize(1000,250);
+	glutInitWindowSize(800,200);
 	glutCreateWindow("T-Rex Robo");
 	
 	//load texture
