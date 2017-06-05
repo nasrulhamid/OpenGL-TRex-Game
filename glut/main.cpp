@@ -10,6 +10,7 @@
 #include <iostream>
 #include <iomanip>
 #include <ctime>
+#include <cmath>
 #include <GL/glut.h>
 #include "tga.h"
 #include "tga.c"
@@ -22,14 +23,16 @@ double tmTick=0, tckKika=0;
 float positionX=0, positionY=0;     // Position of the character
 float velocityX=4.0f, velocityY=0.0f;     // Velocity of the character
 float gravity = 6.0f;           // How strong is gravity
-bool stOnGround = true, stCollision = false, stInitGuide=true, stPause=false;
+bool stOnGround = true, stCollision = false, stInitGuide=true, stPause=false
+	, stBonus=false;
 
 int obsI=0; 
-double obsXpos, obsXposmut, obsXpos2, obsXposmut2;
+double obsXpos=100, obsXposmut, obsXpos2=-10, obsXposmut2
+	, bonusXPos=-10;
 double grndXpos;
 double chrXpos=3.0;
 
-const float tSpeedMin =1.0f, tSpeedMax = 3.0f, tStep=0.1f;
+const float tSpeedMin =1.0f, tSpeedMax = 2.5f, tStep=0.1f;
 double tSpeed = tSpeedMin; 
 long score=0, scoreNotif=500, hiscore=0;
 
@@ -142,8 +145,8 @@ void changeSize(int w, int h) {
 	// (you cant make a window of zero width).
 	if (h == 0)	h = 1;
 
-	float ratio =  w * 3.15 / h;
-	//~ float ratio = w/80;
+	//~ float ratio =  w * 3.15 / h;
+	float ratio = w/76;
 	
     //ratio = width / (float) height;
     glViewport(0, 0, w, h);
@@ -218,35 +221,58 @@ void Timer(int iUnused)
 		if(grndXpos>0) grndXpos-=tSpeed; else grndXpos=80;
 		
 		//OBSTACLE
-		if(obsXpos>0) obsXpos-=tSpeed; else {
-			srand (time(NULL));
-			obsXposmut = rand() % 10;
-			obsXpos=80+obsXposmut*2;
+		if(obsXpos>=-10) obsXpos-=tSpeed; else {
+			if (obsXpos2 < 30) {
+				srand (time(NULL));
+				obsXposmut = rand() % 40;
+				obsXpos=80+obsXposmut;
+			}
 		}
 		
-		//~ if(obsXpos2>0) obsXpos2-=tSpeed; else {
-			//~ srand (time(NULL));
-			//~ obsXposmut2 = rand() % 10;
-			//~ obsXpos2=100+obsXposmut2*2;
-		//~ }
+		if(obsXpos2>-10) 
+			obsXpos2-=tSpeed; 
+		else 
+			if (obsXpos < 30) {
+				srand (time(NULL));
+				obsXposmut2 = rand() % 40;
+				obsXpos2=80+obsXposmut2;
+			}
+		
+		//BONUS
+		if (stBonus) 
+			if (bonusXPos>-10) bonusXPos--; else bonusXPos=80+(rand() % 40);
+		else
+			bonusXPos=-10;
+		if ((positionX+5<bonusXPos && positionX+8>=bonusXPos) && positionY>6){
+			score+=500; stBonus=false; bonusXPos=-10;
+		}
+		//generate bonus
+		if (score > 500 && score%400==0 && !stBonus ){
+			srand (time(NULL));
+			bonusXPos=80+(rand() % 40);
+			stBonus=true;
+		}
 		
 		//T-REX
 		if (!stOnGround) sprJump(0.2);
 		
-		score+=tSpeed*0.5;
+		score+=tSpeed;
 		if (score>scoreNotif) {
 			scoreNotif+=500; 
 			system("canberra-gtk-play -f score.ogg &");
-		}
+		}		
+		
 		//DETEKSI COLLISION
-		if (positionX+3<obsXpos+2 && positionX+10>=obsXpos && positionY<=6) {
+		if (((positionX+3<obsXpos+2 && positionX+10>=obsXpos)
+		|| (positionX+3<obsXpos2+2 && positionX+10>=obsXpos2))
+		&& positionY<=6) {
 			stCollision = true; tSpeed=0; stRun=false; 
 			if (score>hiscore) hiscore=score;
 			system("canberra-gtk-play -f collision.ogg &");
 		}
 		
 		//initGuide
-		if (stInitGuide && positionX > obsXpos-18) stPause=true;
+		if (stInitGuide && positionX > obsXpos-15 && positionX < obsXpos) stPause=true;
 		
 	}else{
 		if (chrXpos==3) chrXpos=2.5; else chrXpos=3;
@@ -271,13 +297,16 @@ void genKarakter(int idKarakter){
 			glVertex2f(3.7,6.7);	// ekor
 		glEnd();
 		//ekor
-		glBegin(GL_POLYGON);
-			glVertex2f(1.3,5.7);
-			glVertex2f(4,3.3);	// perut
-			glVertex2f(4,6.7);	// perut
-			glVertex2f(2,8);
-			glVertex2f(1.3,9);
-		glEnd();
+		glPushMatrix();
+			if(stRun && stOnGround) glTranslatef((stKika?0.5:0),(stKika?0.5:0),0);
+			glBegin(GL_POLYGON);
+				glVertex2f(1.7,6);
+				glVertex2f(4,3.3);	// perut
+				glVertex2f(4,6.7);	// perut
+				glVertex2f(2,8);
+				glVertex2f(1.3,9);
+			glEnd();
+		glPopMatrix();
 		//tangan
 		glBegin(GL_TRIANGLE_STRIP);
 			glVertex2f(9.5,7.5);	// perut
@@ -288,24 +317,28 @@ void genKarakter(int idKarakter){
 			glVertex2f(10.7,6.7);
 		glEnd();
 		//kepala
-		glBegin(GL_POLYGON);
-			glVertex2f(7.3,9);		// perut
-			glVertex2f(9.5,9);		// perut, mulut
-			glVertex2f(10,9.7);		// mulut	
-			glVertex2f(10,10.3);			
-			glVertex2f(13,10.3);			
-			glVertex2f(13,13);			
-			glVertex2f(12.5,13.5);			
-			glVertex2f(8,13.5);			
-			glVertex2f(7.3,13);			
-		glEnd();
-		//mulut
-		glBegin(GL_POLYGON);			
-			glVertex2f(9.5,9);		//kepala
-			glVertex2f(12,9);
-			glVertex2f(12,9.7);
-			glVertex2f(10,9.7);		//kepala
-		glEnd();
+		glPushMatrix();
+			glRotatef(stOnGround?0:10, 0.0, 0.0, 1.0);
+			glTranslatef(stOnGround?0:1,stOnGround?0:-2,0);
+			glBegin(GL_POLYGON);
+				glVertex2f(7.3,9);		// perut
+				glVertex2f(9.5,9);		// perut, mulut
+				glVertex2f(10,9.7);		// mulut	
+				glVertex2f(10,10.3);			
+				glVertex2f(13,10.3);			
+				glVertex2f(13,13);			
+				glVertex2f(12.5,13.5);			
+				glVertex2f(8,13.5);			
+				glVertex2f(7.3,13);			
+			glEnd();			
+			//mulut
+			glBegin(GL_POLYGON);			
+				glVertex2f(9.5,9);		//kepala
+				glVertex2f(12,9);
+				glVertex2f(12,9.7);
+				glVertex2f(10,9.7);		//kepala
+			glEnd();
+		glPopMatrix();
 		//kaki
 		glPushMatrix();
 			if(stRun && stOnGround)glTranslatef(0,(stKika?1:0),0);
@@ -365,24 +398,28 @@ void processSpecialKeys(int key, int x, int y) {
 }
 
 void drawObstacle(int obsId=0){
-	glEnable (GL_TEXTURE_2D); // enable texture mapping depan
-   glBindTexture (GL_TEXTURE_2D, 2); //bind ke texture n
-	glBegin(GL_POLYGON);
 	switch (obsId){
-	case 1:
+	case 1: // BONUS
+		glBegin(GL_POLYGON);
+		for(int i=0; i<=20; i++)
+			glVertex2f( 0.5*cos(i*M_PI/10), 0.5*sin(i*M_PI/10));
+		glEnd();
 		break;
 	default:
-		glTexCoord2f( 1.0f, 2.0f);
-		glVertex2f( 0.5, 0.5);
-		glTexCoord2f( 0.0f, 2.0f);
-		glVertex2f(-0.5, 0.5);
-		glTexCoord2f( 0.0f, 0.0f);
-		glVertex2f(-0.5,-0.5);
-		glTexCoord2f( 1.0f, 0.0f);
-		glVertex2f( 0.5,-0.5);
+		glEnable (GL_TEXTURE_2D); // enable texture mapping depan
+		glBindTexture (GL_TEXTURE_2D, 2); //bind ke texture n
+		glBegin(GL_POLYGON);
+			glTexCoord2f( 1.0f, 2.0f);
+			glVertex2f( 0.5, 0.5);
+			glTexCoord2f( 0.0f, 2.0f);
+			glVertex2f(-0.5, 0.5);
+			glTexCoord2f( 0.0f, 0.0f);
+			glVertex2f(-0.5,-0.5);
+			glTexCoord2f( 1.0f, 0.0f);
+			glVertex2f( 0.5,-0.5);
+		glEnd();
+		glDisable(GL_TEXTURE_2D);
 	}
-	glEnd();
-	glDisable(GL_TEXTURE_2D);
 }
 
 void drawGround(){
@@ -405,10 +442,12 @@ void resetValues(){
 	stCollision=false;
 	tSpeed=tSpeedMin;
 	positionX=0; positionY=0;
-	obsXpos=0; obsXpos2=0; grndXpos=0;
+	obsXpos=100; obsXpos2=-10; grndXpos=0; bonusXPos=-10;
 	stRun=true;
 	stPause=false;
 	stInitGuide=true;
+	stBonus=false;
+	scoreNotif=500;
 	score=0;
 }
 
@@ -521,6 +560,14 @@ void display()
 		glPopMatrix();
 	}
 	
+	//BONUS POINT
+	glPushMatrix();
+		glTranslatef(bonusXPos,15,-1);
+		glScalef(2,2,0);
+		glColor3ub(255,255,0);
+		drawObstacle(1);	
+	glPopMatrix();
+	
 	//OBSTACLE
 	glPushMatrix();
 		glTranslatef(obsXpos,5,-1);
@@ -528,14 +575,13 @@ void display()
 		glColor3ub(255,255,255);
 		drawObstacle();	
 	glPopMatrix();
-	//~ glPushMatrix();
 	
-	//~ glTranslatef(obsXpos2,5,-1);
-	//~ glScalef(3,6,0);
-	//~ glColor3ub(255,255,255);
-	//~ drawObstacle();
-	
-	//~ glPopMatrix();
+	glPushMatrix();
+		glTranslatef(obsXpos2,5,-1);
+		glScalef(5,7,0);
+		glColor3ub(255,255,255);
+		drawObstacle();	
+	glPopMatrix();
 	
 	//TREX
 	glPushMatrix();
