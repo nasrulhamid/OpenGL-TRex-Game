@@ -22,28 +22,28 @@ double tmTick=0, tckKika=0;
 float positionX=0, positionY=0;     // Position of the character
 float velocityX=4.0f, velocityY=0.0f;     // Velocity of the character
 float gravity = 6.0f;           // How strong is gravity
-bool stOnGround = true;
-bool stCollision = false;
+bool stOnGround = true, stCollision = false, stInitGuide=true, stPause=false;
 
 int obsI=0; 
 double obsXpos, obsXposmut, obsXpos2, obsXposmut2;
 double grndXpos;
+double chrXpos=3.0;
 
 const float tSpeedMin =1.0f, tSpeedMax = 3.0f, tStep=0.1f;
 double tSpeed = tSpeedMin; 
-long score=0, hiscore=0;
+long score=0, scoreNotif=500, hiscore=0;
 
 void latar(){
-    glBegin(GL_POLYGON);
-        glColor3ub(132,208,228);
-        glVertex2f(0, 20); //vertex 1 x,y kebawah - kekiri -
-        glColor3ub(118,207,230);
-        glVertex2f(80, 20);
-        glColor3ub(233, 244, 237);
-        glVertex2f(80, 0);
-        glColor3ub(218, 236, 241);
-        glVertex2f(0, 0);
-     glEnd();
+   glBegin(GL_POLYGON);
+		glColor3ub(132,208,228);
+		glVertex2f(0, 20); //vertex 1 x,y kebawah - kekiri -
+		glColor3ub(118,207,230);
+		glVertex2f(80, 20);
+		glColor3ub(233, 244, 237);
+		glVertex2f(80, 0);
+		glColor3ub(218, 236, 241);
+		glVertex2f(0, 0);
+	glEnd();
 }
 
 void load_BMP_texture(char *filename) {
@@ -206,8 +206,9 @@ void sprJump(float time)
 }
 
 void Timer(int iUnused)
-{		
-	if(!stCollision){ 
+{	
+	
+	if(!stCollision && !stPause){ 
 		if(stRun && (tckKika>1)){
 			stKika=!stKika;
 			tckKika=0;
@@ -232,23 +233,27 @@ void Timer(int iUnused)
 		//T-REX
 		if (!stOnGround) sprJump(0.2);
 		
-		score++;
-		if (score%500==0) system("canberra-gtk-play -f score.ogg &");
+		score+=tSpeed*0.5;
+		if (score>scoreNotif) {
+			scoreNotif+=500; 
+			system("canberra-gtk-play -f score.ogg &");
+		}
 		//DETEKSI COLLISION
 		if (positionX+3<obsXpos+2 && positionX+10>=obsXpos && positionY<=6) {
 			stCollision = true; tSpeed=0; stRun=false; 
 			if (score>hiscore) hiscore=score;
 			system("canberra-gtk-play -f collision.ogg &");
 		}
-		//~ if (positionX+3<obsXpos2+4 && positionX+10>=obsXpos2 && positionY<=6) {
-			//~ stCollision = true; tSpeed=0; stRun=false;
-		//~ }
-	}else{
 		
+		//initGuide
+		if (stInitGuide && positionX > obsXpos-18) stPause=true;
+		
+	}else{
+		if (chrXpos==3) chrXpos=2.5; else chrXpos=3;
 	}
 		
-		glutPostRedisplay();
-		glutTimerFunc(28, Timer, 0);
+	glutPostRedisplay();
+	glutTimerFunc(28, Timer, 0);
 }
 
 void genKarakter(int idKarakter){
@@ -346,8 +351,10 @@ void processSpecialKeys(int key, int x, int y) {
 			if(stOnGround){
 				system("canberra-gtk-play -f jump.ogg &");
 				velocityY = -12.0f;
-				stOnGround = false;
+				stOnGround = false;  
 			}
+			if(stInitGuide && stPause) stPause=false;
+			stInitGuide=false;
 			break;
 		case GLUT_KEY_DOWN:
 			positionY = 0.0;
@@ -382,14 +389,10 @@ void drawGround(){
 	glEnable (GL_TEXTURE_2D); // enable texture mapping depan
    glBindTexture (GL_TEXTURE_2D, 1); //bind ke texture n
 	glBegin(GL_POLYGON);
-		glTexCoord2f( 0, 0);
-		glVertex2f(-100, 0);
-		glTexCoord2f(30, 0);
-		glVertex2f( 100, 0);
-		glTexCoord2f(30, 1);
-		glVertex2f( 100, 3);
-		glTexCoord2f( 0, 1);
-		glVertex2f(-100, 3);
+		glTexCoord2f( 0, 0);		glVertex2f(-100, 0);
+		glTexCoord2f(30, 0);		glVertex2f( 100, 0);
+		glTexCoord2f(30, 1);		glVertex2f( 100, 3);
+		glTexCoord2f( 0, 1);		glVertex2f(-100, 3);
 		/*for (int i =-80; i<80; i+=3){
 			glVertex2f(	 i, 0);
 			glVertex2f(i+3, 3);
@@ -404,6 +407,8 @@ void resetValues(){
 	positionX=0; positionY=0;
 	obsXpos=0; obsXpos2=0; grndXpos=0;
 	stRun=true;
+	stPause=false;
+	stInitGuide=true;
 	score=0;
 }
 
@@ -424,20 +429,25 @@ void processNormalKeys(unsigned char key, int x, int y){
 		case 'r': case 'R':		// r or R
 			stRun=!stRun;
 			break;
+		case 'p': case 'P':		// r or R
+			stPause=!stPause;
+			break;
 		case ' ':		// SPACEBAR
 			if(stOnGround){
 				system("canberra-gtk-play -f jump.ogg &");
 				velocityY = -12.0f;
 				stOnGround = false;
 			}
-		
+			if(stInitGuide && stPause) stPause=false;
+			stInitGuide=false;
+			break;
 		case '1': 
 			if (tSpeed>tSpeedMin) tSpeed-=tStep;
 			break;
 		case '2': 
 			if(tSpeed<tSpeedMax) tSpeed+=tStep;
 			break;
-		case 'y': case 'Y':
+		case 'y': case 'Y': case 13:
 			if(stCollision) resetValues();
 			break;
 		case 'n': case 'N':
@@ -474,55 +484,15 @@ void display()
 	glPopMatrix();
 	*/
 	
-//GROUND
-	glPushMatrix();
-	
-	glTranslatef(grndXpos,0,0);
-	glColor3ub(255,255,255);
-	//glLineWidth(2);
-	drawGround();
-	glPopMatrix();
-
-//OBSTACLE
-	glPushMatrix();
-	
-	glTranslatef(obsXpos,5,-1);
-	glScalef(5,7,0);
-	glColor3ub(255,255,255);
-	drawObstacle();
-	
-	glPopMatrix();
-	//~ glPushMatrix();
-	
-	//~ glTranslatef(obsXpos2,5,-1);
-	//~ glScalef(3,6,0);
-	//~ glColor3ub(255,255,255);
-	//~ drawObstacle();
-	
-	//~ glPopMatrix();
-	
-//TREX
-	glPushMatrix();
-	if (!stOnGround) {
-		//~ sprJump(0.1); 
-		glTranslatef(positionX,positionY,0);
-	}
-	glTranslatef(3,1.8,-1);
-	glScalef(0.4,0.4,0);
-	glColor3ub(79,90,47);
-	//glLineWidth(2);
-	genKarakter(1);	
-	glPopMatrix();	
-	
 // SCORING	
 	glPushMatrix();
-	glTranslatef(65,17,-1);
-	strPrint(0,0,255,255,255,GLUT_BITMAP_HELVETICA_18,"SCORE: "+to_string(score));  
+		glTranslatef(65,17,0);
+		strPrint(0,0,255,255,255,GLUT_BITMAP_HELVETICA_18,"SCORE: "+to_string(score));  
 	glPopMatrix();	
 	if (hiscore>0){
 		glPushMatrix();
-		glTranslatef(61,15,-1);
-		strPrint(0,0,255,255,255,GLUT_BITMAP_HELVETICA_18,"HIGH SCORE: "+to_string(hiscore));  
+			glTranslatef(61,15,0);
+			strPrint(0,0,255,255,255,GLUT_BITMAP_HELVETICA_18,"HIGH SCORE: "+to_string(hiscore));  
 		glPopMatrix();	
 	}
 	
@@ -535,27 +505,60 @@ void display()
 //COLLISION DETECTION
 	if (stCollision) {
 		glPushMatrix();
-		glTranslatef(33,15,-1);
-		strPrint(0,0,255,255,255,GLUT_BITMAP_HELVETICA_18,"RESTART? (Y/N)");  
+			glTranslatef(33,15,0);
+			strPrint(0,0,255,255,255,GLUT_BITMAP_HELVETICA_18,"RESTART? (Y/N)");  
+		glPopMatrix();
+	}
+	if (stPause) {
+		glPushMatrix();
+			if (stInitGuide==false){
+				glTranslatef(37,15,0);
+				strPrint(0,0,255,255,255,GLUT_BITMAP_HELVETICA_18,"PAUSED");
+			}else{
+				glTranslatef(27,15,0);
+				strPrint(0,0,255,255,255,GLUT_BITMAP_HELVETICA_18,"Press SPACE or UP for JUMPING");
+			}
 		glPopMatrix();
 	}
 	
-//tombol
-	//~ glEnable(GL_TEXTURE_2D);
-	//~ glBindTexture (GL_TEXTURE_2D, 3); //bind ke texture n
-	//~ char fl[100];
-	//~ strcpy(fl, "tombol.bmp");
-	//~ load_BMP_texture(fl);
+	//OBSTACLE
+	glPushMatrix();
+		glTranslatef(obsXpos,5,-1);
+		glScalef(5,7,0);
+		glColor3ub(255,255,255);
+		drawObstacle();	
+	glPopMatrix();
 	//~ glPushMatrix();
-	//~ glTranslatef(33,15,0); 
-	//~ glBegin(GL_POLYGON);
-		//~ glTexCoord2f(1, 1);	glVertex2f( 1, 1);
-		//~ glTexCoord2f(0, 1);	glVertex2f(-1, 1);
-		//~ glTexCoord2f(0, 0);	glVertex2f(-1,-1);
-		//~ glTexCoord2f(1, 0);	glVertex2f( 1,-1);
-	//~ glEnd();
+	
+	//~ glTranslatef(obsXpos2,5,-1);
+	//~ glScalef(3,6,0);
+	//~ glColor3ub(255,255,255);
+	//~ drawObstacle();
+	
 	//~ glPopMatrix();
-	//~ glDisable(GL_TEXTURE_2D);
+	
+	//TREX
+	glPushMatrix();
+		if (!stOnGround) {
+			//~ sprJump(0.1); 
+			glTranslatef(positionX,positionY,0);
+		}
+		glTranslatef(chrXpos,1.7,-1);
+		glScalef(0.4,0.4,0);
+		glColor3ub(79,90,47);
+		//glLineWidth(2);
+		genKarakter(1);	
+	glPopMatrix();	
+	
+	//GROUND
+	glPushMatrix();
+	
+	glTranslatef(grndXpos,0,0);
+	glColor3ub(255,255,255);
+	//glLineWidth(2);
+	drawGround();
+	glPopMatrix();
+	
 	latar();
 	glutSwapBuffers();
 }
