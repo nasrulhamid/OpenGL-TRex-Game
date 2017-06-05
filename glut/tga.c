@@ -144,6 +144,7 @@ unsigned char *getData (FILE *s, int sz, int iBits)
         return getRGB (s, sz);	
     else if (iBits == 8)
         return getGray (s, sz);
+    return 0;
 }
 /*
 =============
