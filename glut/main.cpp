@@ -21,7 +21,7 @@ double tmTick=0, tckKika=0;
 
 float positionX=0, positionY=0;     // Position of the character
 float velocityX=4.0f, velocityY=0.0f;     // Velocity of the character
-float gravity = 5.5f;           // How strong is gravity
+float gravity = 6.0f;           // How strong is gravity
 bool stOnGround = true;
 bool stCollision = false;
 
@@ -31,7 +31,7 @@ double grndXpos;
 
 const float tSpeedMin =1.0f, tSpeedMax = 3.0f, tStep=0.1f;
 double tSpeed = tSpeedMin; 
-long score=0;
+long score=0, hiscore=0;
 
 void latar(){
     glBegin(GL_POLYGON);
@@ -138,12 +138,12 @@ void grid(int baris, int kolom) {
 }
 
 void changeSize(int w, int h) {
-	float ratio = w/80;
 	// Prevent a divide by zero, when window is too short
 	// (you cant make a window of zero width).
 	if (h == 0)	h = 1;
 
-	//float ratio =  w * 1.0 / h;
+	float ratio =  w * 3.15 / h;
+	//~ float ratio = w/80;
 	
     //ratio = width / (float) height;
     glViewport(0, 0, w, h);
@@ -165,7 +165,8 @@ void changeSize(int w, int h) {
 	//gluPerspective(0,1,1,100);
 	
 	//glOrtho(-w/20, w/20, -h/20, h/20, 1.f, -1.f);
-	glOrtho(0, (float)w/ratio, 0, (float)h/ratio, 1.f, -1.f);
+	//~ glOrtho(0, (float)w/ratio, 0, (float)h/ratio, 1.f, -1.f);
+	glOrtho(0, w/ratio, 0, h/ratio, 1.f, -1.f);
 	//glOrtho(-40, 40, -20, 20, 1.f, -1.f);
 
 	// Get Back to the Modelview
@@ -231,16 +232,17 @@ void Timer(int iUnused)
 		//T-REX
 		if (!stOnGround) sprJump(0.2);
 		
+		score++;
+		if (score%500==0) system("canberra-gtk-play -f score.ogg &");
 		//DETEKSI COLLISION
 		if (positionX+3<obsXpos+2 && positionX+10>=obsXpos && positionY<=6) {
-			stCollision = true; tSpeed=0; stRun=false;
+			stCollision = true; tSpeed=0; stRun=false; 
+			if (score>hiscore) hiscore=score;
 			system("canberra-gtk-play -f collision.ogg &");
 		}
 		//~ if (positionX+3<obsXpos2+4 && positionX+10>=obsXpos2 && positionY<=6) {
 			//~ stCollision = true; tSpeed=0; stRun=false;
 		//~ }
-		score++;
-		if (score%500==0) system("canberra-gtk-play -f score.ogg &");
 	}else{
 		
 	}
@@ -485,7 +487,7 @@ void display()
 	glPushMatrix();
 	
 	glTranslatef(obsXpos,5,-1);
-	glScalef(3,6,0);
+	glScalef(5,7,0);
 	glColor3ub(255,255,255);
 	drawObstacle();
 	
@@ -514,9 +516,15 @@ void display()
 	
 // SCORING	
 	glPushMatrix();
-	glTranslatef(60,17,-1);
+	glTranslatef(65,17,-1);
 	strPrint(0,0,255,255,255,GLUT_BITMAP_HELVETICA_18,"SCORE: "+to_string(score));  
 	glPopMatrix();	
+	if (hiscore>0){
+		glPushMatrix();
+		glTranslatef(61,15,-1);
+		strPrint(0,0,255,255,255,GLUT_BITMAP_HELVETICA_18,"HIGH SCORE: "+to_string(hiscore));  
+		glPopMatrix();	
+	}
 	
 	//debug
 	//~ glPushMatrix();
