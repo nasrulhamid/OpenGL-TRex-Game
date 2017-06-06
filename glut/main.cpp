@@ -9,6 +9,7 @@
 
 #include <iostream>
 #include <iomanip>
+#include <vector>
 #include <ctime>
 #include <cmath>
 #include <GL/glut.h>
@@ -25,7 +26,7 @@ float positionX=0, positionY=0;     // Position of the character
 float velocityX=4.0f, velocityY=0.0f;     // Velocity of the character
 float gravity = 6.0f;           // How strong is gravity
 bool stOnGround = true, stCollision = false, stInitGuide=true, stPause=false
-	, stBonus=false;
+	, stBonus=false, stNunduk=false, nightmode=false;
 
 int obsI=0; 
 double obsXpos=100, obsXposmut, obsXpos2=-10, obsXposmut2
@@ -34,20 +35,22 @@ double grndXpos;
 double chrXpos=3.0;
 
 const float tSpeedMin =1.0f, tSpeedMax = 2.0f, tStep=0.1f;
-double tSpeed = tSpeedMin; 
-long score=0, scoreNotif=500, hiscore=0;
+float tSpeed = tSpeedMin, latarAlpha=1.0; 
+long score=0, scoreNotif=500, hiscore=0, nextNightMode=800, tmr=0;
 
-GLuint tx_obs1, tx_obs2;
+unsigned int crr,crg,crb;
+
+GLuint tx_obs1, tx_obs2, tx_obs1n, tx_obs2n;
 
 void latar(){
    glBegin(GL_POLYGON);
-		glColor3ub(132,208,228);
+		glColor4ub(132,208,228,latarAlpha*255);
 		glVertex2f(0, 20); //vertex 1 x,y kebawah - kekiri -
-		glColor3ub(118,207,230);
+		glColor4ub(118,207,230,latarAlpha*255);
 		glVertex2f(80, 20);
-		glColor3ub(233, 244, 237);
+		glColor4ub(233, 244, 237,latarAlpha*255);
 		glVertex2f(80, 0);
-		glColor3ub(218, 236, 241);
+		glColor4ub(218, 236, 241,latarAlpha*255);
 		glVertex2f(0, 0);
 	glEnd();
 }
@@ -171,13 +174,25 @@ void load_soil_textures(){
 		"obs1.png",
 		SOIL_LOAD_AUTO,
 		SOIL_CREATE_NEW_ID,
-		SOIL_FLAG_INVERT_Y | SOIL_FLAG_COMPRESS_TO_DXT | SOIL_FLAG_MULTIPLY_ALPHA
+		SOIL_FLAG_MIPMAPS | SOIL_FLAG_INVERT_Y | SOIL_FLAG_COMPRESS_TO_DXT | SOIL_FLAG_MULTIPLY_ALPHA
 	);
 	tx_obs2 = SOIL_load_OGL_texture(
 		"obs2.png",
 		SOIL_LOAD_AUTO,
 		SOIL_CREATE_NEW_ID,
-		SOIL_FLAG_INVERT_Y | SOIL_FLAG_COMPRESS_TO_DXT | SOIL_FLAG_MULTIPLY_ALPHA
+		SOIL_FLAG_MIPMAPS | SOIL_FLAG_INVERT_Y | SOIL_FLAG_COMPRESS_TO_DXT | SOIL_FLAG_MULTIPLY_ALPHA
+	);
+	tx_obs1n = SOIL_load_OGL_texture(
+		"obs1n.png",
+		SOIL_LOAD_AUTO,
+		SOIL_CREATE_NEW_ID,
+		SOIL_FLAG_MIPMAPS | SOIL_FLAG_INVERT_Y | SOIL_FLAG_COMPRESS_TO_DXT | SOIL_FLAG_MULTIPLY_ALPHA
+	);
+	tx_obs2n = SOIL_load_OGL_texture(
+		"obs2n.png",
+		SOIL_LOAD_AUTO,
+		SOIL_CREATE_NEW_ID,
+		SOIL_FLAG_MIPMAPS | SOIL_FLAG_INVERT_Y | SOIL_FLAG_COMPRESS_TO_DXT | SOIL_FLAG_MULTIPLY_ALPHA
 	);
 }
 
@@ -277,7 +292,6 @@ void sprJump(float time)
 
 void Timer(int iUnused)
 {	
-	
 	if(!stCollision && !stPause){ 
 		if(stRun && (tckKika>1)){
 			stKika=!stKika;
@@ -316,6 +330,7 @@ void Timer(int iUnused)
 			score+=500; stBonus=false; bonusXPos=-10;
 		}
 		//generate bonus
+		crr=255; crg=255; crb=0;
 		if (score > 500 && score%400==0 && !stBonus ){
 			srand (time(NULL));
 			bonusXPos=80+(rand() % 40);
@@ -334,7 +349,7 @@ void Timer(int iUnused)
 		//DETEKSI COLLISION
 		if (((positionX+4<obsXpos+2 && positionX+9>=obsXpos)
 		|| (positionX+4<obsXpos2+2 && positionX+9>=obsXpos2))
-		&& positionY<=6) {
+		&& positionY<=5) {
 			stCollision = true; tSpeed=0; stRun=false; 
 			if (score>hiscore) hiscore=score;
 			system("canberra-gtk-play -f collision.ogg &");
@@ -342,6 +357,15 @@ void Timer(int iUnused)
 		
 		//initGuide
 		if (stInitGuide && positionX > obsXpos-15 && positionX < obsXpos) stPause=true;
+		
+		//switch night-day
+		tmr++;
+		if(tmr>nextNightMode) {
+			nightmode=!nightmode;
+			nextNightMode += 800;
+		}
+		if (nightmode && latarAlpha>0) latarAlpha-=0.05;
+		else if(!nightmode && latarAlpha<1) latarAlpha+=0.05;
 		
 	}else{
 		if (chrXpos==3) chrXpos=2.5; else chrXpos=3;
@@ -357,14 +381,29 @@ void genKarakter(int idKarakter){
 		//glEnable (GL_TEXTURE_2D); // enable texture mapping depan
 		//glBindTexture (GL_TEXTURE_2D, 3); //bind ke texture n
 		//perut
-		glBegin(GL_POLYGON);
-			glVertex2f(4,3.3);	// ekor, kaki
-			glVertex2f(7,3.3);	//kaki
-			glVertex2f(9.5,5.5);
-			glVertex2f(9.5,9);		// kepala
-			glVertex2f(7.3,9);		// kepala
-			glVertex2f(3.7,6.7);	// ekor
-		glEnd();
+		glPushMatrix();
+			if(stNunduk){
+				glRotatef(-15,0,0,1);
+				glTranslatef(-1.6,1.1,0);
+			}
+			glBegin(GL_POLYGON);
+				glVertex2f(4,3.3);	// ekor, kaki
+				glVertex2f(7,3.3);	//kaki
+				glVertex2f(9.5,5.5);
+				glVertex2f(9.5,9);		// kepala
+				glVertex2f(7.3,9);		// kepala
+				glVertex2f(3.7,6.7);	// ekor
+			glEnd();
+			//tangan
+			glBegin(GL_TRIANGLE_STRIP);
+				glVertex2f(9.5,7.5);	// perut
+				glVertex2f(9.5,8);		// perut
+				glVertex2f(10.3,7.5);
+				glVertex2f(10.7,8);
+				glVertex2f(10.3,6.7);
+				glVertex2f(10.7,6.7);
+			glEnd();
+		glPopMatrix();
 		//ekor
 		glPushMatrix();
 			if(stRun && stOnGround) glTranslatef((stKika?0.5:0),(stKika?0.5:0),0);
@@ -376,19 +415,15 @@ void genKarakter(int idKarakter){
 				glVertex2f(1.3,9);
 			glEnd();
 		glPopMatrix();
-		//tangan
-		glBegin(GL_TRIANGLE_STRIP);
-			glVertex2f(9.5,7.5);	// perut
-			glVertex2f(9.5,8);		// perut
-			glVertex2f(10.3,7.5);
-			glVertex2f(10.7,8);
-			glVertex2f(10.3,6.7);
-			glVertex2f(10.7,6.7);
-		glEnd();
 		//kepala
 		glPushMatrix();
-			glRotatef(stOnGround?0:10, 0.0, 0.0, 1.0);
-			glTranslatef(stOnGround?0:1,stOnGround?0:-2,0);
+			if(stNunduk){
+				glRotatef(-15,0,0,1);
+				glTranslatef(-1.6,1.1,0);
+			}else{
+				glRotatef(stOnGround?0:10, 0.0, 0.0, 1.0);
+				glTranslatef(stOnGround?0:1,stOnGround?0:-2,0);
+			}
 			glBegin(GL_POLYGON);
 				glVertex2f(7.3,9);		// perut
 				glVertex2f(9.5,9);		// perut, mulut
@@ -407,6 +442,16 @@ void genKarakter(int idKarakter){
 				glVertex2f(12,9.7);
 				glVertex2f(10,9.7);		//kepala
 			glEnd();
+			//mata
+			glPushMatrix();
+				glColor3ub(17,17,17);
+				glBegin(GL_POLYGON);
+					glVertex2f(8.5,12);		
+					glVertex2f(9,12);		
+					glVertex2f(9,12.5);		
+					glVertex2f(8.5,12.5);
+				glEnd();		
+			glPopMatrix();
 		glPopMatrix();
 		//kaki
 		glPushMatrix();
@@ -433,16 +478,6 @@ void genKarakter(int idKarakter){
 				glVertex2f(5,1);		
 			glEnd();
 		glPopMatrix();
-		//mata
-		glPushMatrix();
-			glColor3ub(17,17,17);
-			glBegin(GL_POLYGON);
-				glVertex2f(8.5,12);		
-				glVertex2f(9,12);		
-				glVertex2f(9,12.5);		
-				glVertex2f(8.5,12.5);
-			glEnd();		
-		glPopMatrix();
 		break;
 	}
 }
@@ -457,11 +492,14 @@ void processSpecialKeys(int key, int x, int y) {
 			}
 			if(stInitGuide && stPause) stPause=false;
 			stInitGuide=false;
+			stPause = false;
 			break;
 		case GLUT_KEY_DOWN:
 			positionY = 0.0;
 			velocityY = 0.0;
 			stOnGround = true;
+			stNunduk=true;
+			stPause = false;
 			break;
 	}
 }
@@ -476,9 +514,15 @@ void drawObstacle(int obsId=0){
 		break;
 	case 2:	case 3: // OBSTACLE
 		glEnable (GL_TEXTURE_2D); // enable texture mapping depan
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		glBindTexture (GL_TEXTURE_2D, (obsId==2)?tx_obs1:tx_obs2); //bind ke texture n
+		//~ glEnable (GL_BLEND); glBlendFunc (GL_ONE, GL_ONE);
+		//~ glTexEnvf(GL_TEXTURE_2D,GL_TEXTURE_ENV_MODE,GL_DECAL);
+		//~ glTexEnvf(GL_TEXTURE_2D,GL_TEXTURE_ENV_MODE,GL_MODULATE);
+		if(!nightmode) glBindTexture (GL_TEXTURE_2D, (obsId==2)?tx_obs1:tx_obs2);
+		else if(nightmode) glBindTexture (GL_TEXTURE_2D, (obsId==2)?tx_obs1n:tx_obs2n);
+		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
 		glBegin(GL_POLYGON);
 			glTexCoord2f( 1.0f, 1.0f);	glVertex2f( 0.5, 0.5);
 			glTexCoord2f( 0.0f, 1.0f);	glVertex2f(-0.5, 0.5);
@@ -488,17 +532,12 @@ void drawObstacle(int obsId=0){
 		glDisable(GL_TEXTURE_2D);
 		break;
 	default:
-		//~ glEnable (GL_TEXTURE_2D); // enable texture mapping depan
-		//~ glEnable(GL_BLEND);
-		//~ glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		//~ glBindTexture (GL_TEXTURE_2D, tx_obs1); //bind ke texture n
 		glBegin(GL_POLYGON);
-			glTexCoord2f( 1.0f, 1.0f);	glVertex2f( 0.5, 0.5);
-			glTexCoord2f( 0.0f, 1.0f);	glVertex2f(-0.5, 0.5);
-			glTexCoord2f( 0.0f, 0.0f);	glVertex2f(-0.5,-0.5);
-			glTexCoord2f( 1.0f, 0.0f);	glVertex2f( 0.5,-0.5);
+			glVertex2f( 0.5, 0.5);
+			glVertex2f(-0.5, 0.5);
+			glVertex2f(-0.5,-0.5);
+			glVertex2f( 0.5,-0.5);
 		glEnd();
-		//~ glDisable(GL_TEXTURE_2D);
 	}
 }
 
@@ -525,6 +564,7 @@ void drawGround(){
 }
 
 void resetValues(){
+	glEnable (GL_BLEND); glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	stCollision=false;
 	tSpeed=tSpeedMin;
 	positionX=0; positionY=0;
@@ -535,6 +575,10 @@ void resetValues(){
 	stBonus=false;
 	scoreNotif=500;
 	score=0;
+	tmr=0;
+	nightmode=false;
+	nextNightMode=800;
+	
 }
 
 void releaseSpecialKeys(int key, int x, int y) {
@@ -542,6 +586,9 @@ void releaseSpecialKeys(int key, int x, int y) {
 		case GLUT_KEY_UP:
 			if(velocityY < -10.0f)       // If character is still ascending in the jump
 				velocityY = -10.0f;
+			break;
+		case GLUT_KEY_DOWN:
+			stNunduk = false;
 			break;
 	}
 }
@@ -565,6 +612,7 @@ void processNormalKeys(unsigned char key, int x, int y){
 			}
 			if(stInitGuide && stPause) stPause=false;
 			stInitGuide=false;
+			stPause = false;
 			break;
 		case '1': 
 			if (tSpeed>tSpeedMin) tSpeed-=tStep;
@@ -573,7 +621,8 @@ void processNormalKeys(unsigned char key, int x, int y){
 			if(tSpeed<tSpeedMax) tSpeed+=tStep;
 			break;
 		case 'y': case 'Y': case 13:
-			if(stCollision) resetValues();
+			if(stCollision) resetValues(); 
+			stPause=false;
 			break;
 		case 'n': case 'N':
 			if(stCollision) 
@@ -597,7 +646,6 @@ void releaseNormalKeys(unsigned char key, int x, int y){
 		
 	}
 }
-
 
 void display()
 {	
@@ -624,7 +672,7 @@ void display()
 	//debug
 	//~ glPushMatrix();
 	//~ glTranslatef(60,10,-1);
-	//~ strPrint(0,0,255,255,255,GLUT_BITMAP_HELVETICA_18,to_string(obsXposmut)+" -- "+to_string(obsXposmut2));  
+	//~ strPrint(0,0,255,255,255,GLUT_BITMAP_HELVETICA_18,to_string(tmr)+" "+to_string(nextNightMode));  
 	//~ glPopMatrix();	
 	
 //COLLISION DETECTION
@@ -650,7 +698,7 @@ void display()
 	glPushMatrix();
 		glTranslatef(bonusXPos,15,-1);
 		glScalef(2,2,0);
-		glColor3ub(255,255,0);
+		glColor3ub(crr,crg,crb);
 		drawObstacle(1);	
 	glPopMatrix();
 	
@@ -668,12 +716,22 @@ void display()
 		genKarakter(1);	
 	glPopMatrix();	
 	
+	//bayang
+	glPushMatrix();
+		glTranslatef(5.2,2,-1);
+		if(stOnGround) glScalef(1.5,0.5,1); else glScalef(1.25,0.25,1);
+		glColor4ub(100,100,100,100);
+		glBegin(GL_POLYGON);
+			for (unsigned int i=0; i<20; i++)
+				glVertex2f(cos(i*M_PI/10),sin(i*M_PI/10));		
+		glEnd();		
+	glPopMatrix();
+	
 	//OBSTACLE
 	glPushMatrix();
 		glTranslatef(obsXpos,5,-1);
 		glScalef(5,7,0);
 		glColor4ub(255,255,255,255);
-		//~ glColor4ub(0,0,0,255);
 		drawObstacle(2);	
 	glPopMatrix();
 	
@@ -707,6 +765,7 @@ int main(int argc, char **argv)
 	
 	//load texture
 	glTga();
+	resetValues();
 	load_soil_textures();
 	
 	glutDisplayFunc(display);
