@@ -12,6 +12,7 @@
 #include <ctime>
 #include <cmath>
 #include <GL/glut.h>
+#include "SOIL.h"
 #include "tga.h"
 #include "tga.c"
 
@@ -32,9 +33,11 @@ double obsXpos=100, obsXposmut, obsXpos2=-10, obsXposmut2
 double grndXpos;
 double chrXpos=3.0;
 
-const float tSpeedMin =1.0f, tSpeedMax = 2.5f, tStep=0.1f;
+const float tSpeedMin =1.0f, tSpeedMax = 2.0f, tStep=0.1f;
 double tSpeed = tSpeedMin; 
 long score=0, scoreNotif=500, hiscore=0;
+
+GLuint tx_obs1, tx_obs2;
 
 void latar(){
    glBegin(GL_POLYGON);
@@ -47,6 +50,55 @@ void latar(){
 		glColor3ub(218, 236, 241);
 		glVertex2f(0, 0);
 	glEnd();
+}
+
+GLuint LoadTexture( const char * filename )
+{
+
+	GLuint texture;
+
+	int width, height;
+
+	unsigned char * data;
+
+	FILE * file;
+
+	file = fopen( filename, "rb" );
+
+	if ( file == NULL ) return 0;
+	width = 1024;
+	height = 512;
+	data = (unsigned char *)malloc( width * height * 3 );
+	//int size = fseek(file,);
+	fread( data, width * height * 3, 1, file );
+	fclose( file );
+
+	for(int i = 0; i < width * height ; ++i)
+	{
+		int index = i*3;
+		unsigned char B,R;
+		B = data[index];
+		R = data[index+2];
+
+		data[index] = R;
+		data[index+2] = B;
+
+	}
+
+
+	glGenTextures( 1, &texture );
+	glBindTexture( GL_TEXTURE_2D, texture );
+	glTexEnvf( GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE,GL_MODULATE );
+	glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,GL_LINEAR_MIPMAP_NEAREST );
+
+
+	glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,GL_LINEAR );
+	glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,GL_REPEAT );
+	glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,GL_REPEAT );
+	gluBuild2DMipmaps( GL_TEXTURE_2D, 3, width, height,GL_RGB, GL_UNSIGNED_BYTE, data );
+	free( data );
+
+	return texture;
 }
 
 void load_BMP_texture(char *filename) {
@@ -114,6 +166,21 @@ void glTga(void)
 	//load_BMP_texture("dskin.bmp");
 }
 
+void load_soil_textures(){
+	tx_obs1 = SOIL_load_OGL_texture(
+		"obs1.png",
+		SOIL_LOAD_AUTO,
+		SOIL_CREATE_NEW_ID,
+		SOIL_FLAG_INVERT_Y | SOIL_FLAG_COMPRESS_TO_DXT | SOIL_FLAG_MULTIPLY_ALPHA
+	);
+	tx_obs2 = SOIL_load_OGL_texture(
+		"obs2.png",
+		SOIL_LOAD_AUTO,
+		SOIL_CREATE_NEW_ID,
+		SOIL_FLAG_INVERT_Y | SOIL_FLAG_COMPRESS_TO_DXT | SOIL_FLAG_MULTIPLY_ALPHA
+	);
+}
+
 void grid(int baris, int kolom) {
 
     // draw grid on floor (0,0,0)
@@ -146,7 +213,7 @@ void changeSize(int w, int h) {
 	if (h == 0)	h = 1;
 
 	//~ float ratio =  w * 3.15 / h;
-	float ratio = w/76;
+	float ratio = w/80.0;
 	
     //ratio = width / (float) height;
     glViewport(0, 0, w, h);
@@ -160,7 +227,7 @@ void changeSize(int w, int h) {
 	glLoadIdentity();
 
 	// Set the viewport to be the entire window
-	glViewport(0, 0, w, h);
+	glViewport(0, (h-w/4)/2, w, h);
 	
 
 	// Set the correct perspective.
@@ -169,7 +236,7 @@ void changeSize(int w, int h) {
 	
 	//glOrtho(-w/20, w/20, -h/20, h/20, 1.f, -1.f);
 	//~ glOrtho(0, (float)w/ratio, 0, (float)h/ratio, 1.f, -1.f);
-	glOrtho(0, w/ratio, 0, h/ratio, 1.f, -1.f);
+	glOrtho(0, 80.0, 0, h/ratio, 1.f, -1.f);
 	//glOrtho(-40, 40, -20, 20, 1.f, -1.f);
 
 	// Get Back to the Modelview
@@ -221,8 +288,10 @@ void Timer(int iUnused)
 		if(grndXpos>0) grndXpos-=tSpeed; else grndXpos=80;
 		
 		//OBSTACLE
-		if(obsXpos>=-10) obsXpos-=tSpeed; else {
-			if (obsXpos2 < 30) {
+		if(obsXpos>=-10) 
+			obsXpos-=tSpeed; 
+		else {
+			if (obsXpos2 < 40) {
 				srand (time(NULL));
 				obsXposmut = rand() % 40;
 				obsXpos=80+obsXposmut;
@@ -232,7 +301,7 @@ void Timer(int iUnused)
 		if(obsXpos2>-10) 
 			obsXpos2-=tSpeed; 
 		else 
-			if (obsXpos < 30) {
+			if (obsXpos < 40) {
 				srand (time(NULL));
 				obsXposmut2 = rand() % 40;
 				obsXpos2=80+obsXposmut2;
@@ -263,8 +332,8 @@ void Timer(int iUnused)
 		}		
 		
 		//DETEKSI COLLISION
-		if (((positionX+3<obsXpos+2 && positionX+10>=obsXpos)
-		|| (positionX+3<obsXpos2+2 && positionX+10>=obsXpos2))
+		if (((positionX+4<obsXpos+2 && positionX+9>=obsXpos)
+		|| (positionX+4<obsXpos2+2 && positionX+9>=obsXpos2))
 		&& positionY<=6) {
 			stCollision = true; tSpeed=0; stRun=false; 
 			if (score>hiscore) hiscore=score;
@@ -405,20 +474,31 @@ void drawObstacle(int obsId=0){
 			glVertex2f( 0.5*cos(i*M_PI/10), 0.5*sin(i*M_PI/10));
 		glEnd();
 		break;
-	default:
+	case 2:	case 3: // OBSTACLE
 		glEnable (GL_TEXTURE_2D); // enable texture mapping depan
-		glBindTexture (GL_TEXTURE_2D, 2); //bind ke texture n
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		glBindTexture (GL_TEXTURE_2D, (obsId==2)?tx_obs1:tx_obs2); //bind ke texture n
 		glBegin(GL_POLYGON);
-			glTexCoord2f( 1.0f, 2.0f);
-			glVertex2f( 0.5, 0.5);
-			glTexCoord2f( 0.0f, 2.0f);
-			glVertex2f(-0.5, 0.5);
-			glTexCoord2f( 0.0f, 0.0f);
-			glVertex2f(-0.5,-0.5);
-			glTexCoord2f( 1.0f, 0.0f);
-			glVertex2f( 0.5,-0.5);
+			glTexCoord2f( 1.0f, 1.0f);	glVertex2f( 0.5, 0.5);
+			glTexCoord2f( 0.0f, 1.0f);	glVertex2f(-0.5, 0.5);
+			glTexCoord2f( 0.0f, 0.0f);	glVertex2f(-0.5,-0.5);
+			glTexCoord2f( 1.0f, 0.0f);	glVertex2f( 0.5,-0.5);
 		glEnd();
 		glDisable(GL_TEXTURE_2D);
+		break;
+	default:
+		//~ glEnable (GL_TEXTURE_2D); // enable texture mapping depan
+		//~ glEnable(GL_BLEND);
+		//~ glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		//~ glBindTexture (GL_TEXTURE_2D, tx_obs1); //bind ke texture n
+		glBegin(GL_POLYGON);
+			glTexCoord2f( 1.0f, 1.0f);	glVertex2f( 0.5, 0.5);
+			glTexCoord2f( 0.0f, 1.0f);	glVertex2f(-0.5, 0.5);
+			glTexCoord2f( 0.0f, 0.0f);	glVertex2f(-0.5,-0.5);
+			glTexCoord2f( 1.0f, 0.0f);	glVertex2f( 0.5,-0.5);
+		glEnd();
+		//~ glDisable(GL_TEXTURE_2D);
 	}
 }
 
@@ -430,11 +510,17 @@ void drawGround(){
 		glTexCoord2f(30, 0);		glVertex2f( 100, 0);
 		glTexCoord2f(30, 1);		glVertex2f( 100, 3);
 		glTexCoord2f( 0, 1);		glVertex2f(-100, 3);
-		/*for (int i =-80; i<80; i+=3){
-			glVertex2f(	 i, 0);
-			glVertex2f(i+3, 3);
-		}*/
 	glEnd();
+	
+	//batu
+	glPushMatrix();
+	glTranslatef(0,2.8,0);
+	glScalef(1.5,1.25,0);
+	glBegin(GL_POLYGON);
+		for(int i=0; i<=20; i++)
+			glVertex2f( 0.5*cos(i*M_PI/10), 0.5*sin(i*M_PI/10));
+	glEnd();
+	glPopMatrix();
 	glDisable(GL_TEXTURE_2D);
 }
 
@@ -568,20 +654,6 @@ void display()
 		drawObstacle(1);	
 	glPopMatrix();
 	
-	//OBSTACLE
-	glPushMatrix();
-		glTranslatef(obsXpos,5,-1);
-		glScalef(5,7,0);
-		glColor3ub(255,255,255);
-		drawObstacle();	
-	glPopMatrix();
-	
-	glPushMatrix();
-		glTranslatef(obsXpos2,5,-1);
-		glScalef(5,7,0);
-		glColor3ub(255,255,255);
-		drawObstacle();	
-	glPopMatrix();
 	
 	//TREX
 	glPushMatrix();
@@ -595,6 +667,23 @@ void display()
 		//glLineWidth(2);
 		genKarakter(1);	
 	glPopMatrix();	
+	
+	//OBSTACLE
+	glPushMatrix();
+		glTranslatef(obsXpos,5,-1);
+		glScalef(5,7,0);
+		glColor4ub(255,255,255,255);
+		//~ glColor4ub(0,0,0,255);
+		drawObstacle(2);	
+	glPopMatrix();
+	
+	glPushMatrix();
+		glTranslatef(obsXpos2,5,-1);
+		glScalef(5,7,0);
+		glColor3ub(255,255,255);
+		drawObstacle(3);	
+	glPopMatrix();
+	
 	
 	//GROUND
 	glPushMatrix();
@@ -610,18 +699,20 @@ void display()
 }
 
 int main(int argc, char **argv)
-{
+{	
 	glutInit( &argc, argv );
 	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
-	glutInitWindowSize(1000,250);
-	glutCreateWindow("T-Rex Robo");
+	glutInitWindowSize(1000,1000*9/16); // wide screen ratio
+	glutCreateWindow("T-Rex Run");	
 	
 	//load texture
 	glTga();
+	load_soil_textures();
 	
 	glutDisplayFunc(display);
 	glutReshapeFunc(changeSize);
 	glutIdleFunc(display);
+	
 	
 	// here are the new entries
 	glutKeyboardFunc(processNormalKeys);
