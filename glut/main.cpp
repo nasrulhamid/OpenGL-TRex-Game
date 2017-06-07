@@ -5,6 +5,7 @@
  * G64164021	MUHAMMAD JAKA UTAMA
  * G64164053	ISMAIL ADIMA
  * 
+ * Build Command Parameter: g++ -Wall -o "%e" "%f" -lSOIL -lglut -lGL -lGLU
  */
 
 #include <iostream>
@@ -26,7 +27,7 @@ float positionX=0, positionY=0;     // Position of the character
 float velocityX=4.0f, velocityY=0.0f;     // Velocity of the character
 float gravity = 6.0f;           // How strong is gravity
 bool stOnGround = true, stCollision = false, stInitGuide=true, stPause=false
-	, stBonus=false, stNunduk=false, nightmode=false;
+	, stBonus=false, stNunduk=false, nightmode=false, stBintangSet=false;
 
 int obsI=0; 
 double obsXpos=100, obsXposmut, obsXpos2=-10, obsXposmut2
@@ -35,12 +36,25 @@ double grndXpos;
 double chrXpos=3.0;
 
 const float tSpeedMin =1.0f, tSpeedMax = 2.0f, tStep=0.1f;
-float tSpeed = tSpeedMin, latarAlpha=1.0; 
+float tSpeed = tSpeedMin, latarAlpha=1.0, skytmr=0; 
 long score=0, scoreNotif=500, hiscore=0, nextNightMode=800, tmr=0;
 
 unsigned int crr,crg,crb;
 
 GLuint tx_obs1, tx_obs2, tx_obs1n, tx_obs2n;
+
+struct squares_t{
+	float x,y,w,h;
+} bintang[50];
+
+
+void generateBintang(){
+	for(int i=0; i<50; i++){
+		bintang[i].x=rand()%200;
+		bintang[i].y=rand()%16+4;
+		bintang[i].w=rand()%2;
+	}
+}
 
 void latar(){
    glBegin(GL_POLYGON);
@@ -366,6 +380,7 @@ void Timer(int iUnused)
 		}
 		if (nightmode && latarAlpha>0) latarAlpha-=0.05;
 		else if(!nightmode && latarAlpha<1) latarAlpha+=0.05;
+		if (skytmr<100) skytmr+=0.025; else skytmr=0;
 		
 	}else{
 		if (chrXpos==3) chrXpos=2.5; else chrXpos=3;
@@ -444,7 +459,6 @@ void genKarakter(int idKarakter){
 			glEnd();
 			//mata
 			glPushMatrix();
-				glColor3ub(17,17,17);
 				glBegin(GL_POLYGON);
 					glVertex2f(8.5,12);		
 					glVertex2f(9,12);		
@@ -517,8 +531,8 @@ void drawObstacle(int obsId=0){
 		//~ glEnable (GL_BLEND); glBlendFunc (GL_ONE, GL_ONE);
 		//~ glTexEnvf(GL_TEXTURE_2D,GL_TEXTURE_ENV_MODE,GL_DECAL);
 		//~ glTexEnvf(GL_TEXTURE_2D,GL_TEXTURE_ENV_MODE,GL_MODULATE);
-		if(!nightmode) glBindTexture (GL_TEXTURE_2D, (obsId==2)?tx_obs1:tx_obs2);
-		else if(nightmode) glBindTexture (GL_TEXTURE_2D, (obsId==2)?tx_obs1n:tx_obs2n);
+		if(!nightmode) glBindTexture (GL_TEXTURE_2D, (obsId==2 && latarAlpha>0.5)?tx_obs1:tx_obs2);
+		else if(nightmode) glBindTexture (GL_TEXTURE_2D, (obsId==2 && latarAlpha<0.5)?tx_obs1n:tx_obs2n);
 		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
@@ -563,6 +577,50 @@ void drawGround(){
 	glDisable(GL_TEXTURE_2D);
 }
 
+void drawStar (int n=5){	
+	for (int i=0;i<n;i++){
+		glPushMatrix();
+			glRotatef(i*360/n,0,0,1);
+			glBegin(GL_POLYGON);
+			glVertex2f(-0.25,0);
+			//glVertex2f(-0.25,0.5);
+			glVertex2f(0,1);
+			//glVertex2f(0.25,0.5);
+			glVertex2f(0.25,0);
+			glEnd();
+		glPopMatrix();
+	}
+}
+
+void drawSunMoon(){
+	glPushMatrix();
+		//~ glTranslatef(0.1*sunX,10,1);
+		glRotatef(120,0,0,1.0);
+		//~ if(wkt==1){	// SIANG
+			//~ glColor3ub(255,255,0);
+			//~ glBegin(GL_POLYGON);	// SUN
+				//~ for (int i=0,n=30,rad=4;i<=n;i++)
+					//~ glVertex2f(rad*cos(2.0*pi*i/n),rad*sin(2.0*pi*i/n));
+			//~ glEnd();
+		//~ }else if (wkt==2){	// MALAM
+			glPushMatrix();
+				glColor3ub(0,0,0);
+				glScalef(1,0.8,1);
+				glBegin(GL_POLYGON);
+				for (int i=0,n=30,rad=2;i<=n;i++)
+					glVertex2f(rad*cos(2.0*M_PI*i/n),rad*sin(2.0*M_PI*i/n));
+				glEnd();
+			glPopMatrix();
+			glBegin(GL_POLYGON);	// BULAN
+				glColor3ub(255,255,150);
+				for (int i=0,n=30,rad=2;i<=n/2;i++)
+					glVertex2f(rad*cos(2.0*M_PI*i/n),rad*sin(2.0*M_PI*i/n));
+			glEnd();
+			
+		//~ }
+	glPopMatrix();
+}
+
 void resetValues(){
 	glEnable (GL_BLEND); glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	stCollision=false;
@@ -578,7 +636,7 @@ void resetValues(){
 	tmr=0;
 	nightmode=false;
 	nextNightMode=800;
-	
+	generateBintang();
 }
 
 void releaseSpecialKeys(int key, int x, int y) {
@@ -696,12 +754,11 @@ void display()
 	
 	//BONUS POINT
 	glPushMatrix();
-		glTranslatef(bonusXPos,15,-1);
+		glTranslatef(bonusXPos,15,0);
 		glScalef(2,2,0);
 		glColor3ub(crr,crg,crb);
 		drawObstacle(1);	
-	glPopMatrix();
-	
+	glPopMatrix();	
 	
 	//TREX
 	glPushMatrix();
@@ -709,16 +766,16 @@ void display()
 			//~ sprJump(0.1); 
 			glTranslatef(positionX,positionY,0);
 		}
-		glTranslatef(chrXpos,1.7,-1);
+		glTranslatef(chrXpos,1.7,0);
 		glScalef(0.4,0.4,0);
 		glColor3ub(79,90,47);
 		//glLineWidth(2);
 		genKarakter(1);	
 	glPopMatrix();	
 	
-	//bayang
+	//BAYANG
 	glPushMatrix();
-		glTranslatef(5.2,2,-1);
+		glTranslatef(5.2,2,0);
 		if(stOnGround) glScalef(1.5,0.5,1); else glScalef(1.25,0.25,1);
 		glColor4ub(100,100,100,100);
 		glBegin(GL_POLYGON);
@@ -729,30 +786,50 @@ void display()
 	
 	//OBSTACLE
 	glPushMatrix();
-		glTranslatef(obsXpos,5,-1);
+		glTranslatef(obsXpos,5,0);
 		glScalef(5,7,0);
 		glColor4ub(255,255,255,255);
 		drawObstacle(2);	
 	glPopMatrix();
 	
 	glPushMatrix();
-		glTranslatef(obsXpos2,5,-1);
+		glTranslatef(obsXpos2,5,0);
 		glScalef(5,7,0);
 		glColor3ub(255,255,255);
 		drawObstacle(3);	
-	glPopMatrix();
-	
+	glPopMatrix();	
 	
 	//GROUND
 	glPushMatrix();
 	
-	glTranslatef(grndXpos,0,0);
-	glColor3ub(255,255,255);
-	//glLineWidth(2);
-	drawGround();
+		glTranslatef(grndXpos,0,0);
+		glColor3ub(255,255,255);
+		//glLineWidth(2);
+		drawGround();
 	glPopMatrix();
 	
+	if(nightmode && latarAlpha<0.5){
+		//sunmoon
+		glPushMatrix();
+			glTranslatef(100-skytmr,15,0);
+			glColor3ub(255,255,255);
+			drawSunMoon();
+		glPopMatrix();
+		
+		//BINTANG
+		for (int i = 0; i<30; i++){
+			glPushMatrix();
+				glTranslatef(bintang[i].x-skytmr,bintang[i].y,0);
+				glScalef(0.25*bintang[i].w,0.25*bintang[i].w,0);
+				glColor3ub(255,255,255);
+				//glLineWidth(2);
+				drawStar();
+			glPopMatrix();
+		}
+	}
+	
 	latar();
+		
 	glutSwapBuffers();
 }
 
