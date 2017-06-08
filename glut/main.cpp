@@ -5,7 +5,7 @@
  * G64164021	MUHAMMAD JAKA UTAMA
  * G64164053	ISMAIL ADIMA
  * 
- * Build Command Parameter: g++ -Wall -o "%e" "%f" -lSOIL -lglut -lGL -lGLU
+ * Geanie Build Command Parameter: g++ -Wall -o "%e" "%f" -lSOIL -lglut -lGL -lGLU
  */
 
 #include <iostream>
@@ -27,7 +27,8 @@ float positionX=0, positionY=0;     // Position of the character
 float velocityX=4.0f, velocityY=0.0f;     // Velocity of the character
 float gravity = 6.0f;           // How strong is gravity
 bool stOnGround = true, stCollision = false, stInitGuide=true, stPause=false
-	, stBonus=false, stNunduk=false, nightmode=false, stBintangSet=false;
+	, stBonus=false, stNunduk=false, nightmode=false, stBintangSet=false
+	, stRolling=false;
 
 int obsI=0; 
 double obsXpos=100, obsXposmut, obsXpos2=-10, obsXposmut2
@@ -36,8 +37,9 @@ double grndXpos;
 double chrXpos=3.0;
 
 const float tSpeedMin =1.0f, tSpeedMax = 2.0f, tStep=0.1f;
-float tSpeed = tSpeedMin, latarAlpha=1.0, skytmr=0; 
-long score=0, scoreNotif=500, hiscore=0, nextNightMode=800, tmr=0;
+float tSpeed = tSpeedMin, latarAlpha=1.0, skytmr=0, chRollDeg=0.0; 
+long score=0, scoreNotif=500, hiscore=0, nextNightMode=800, tmr=0
+	, nextBonus=800;
 
 unsigned int crr,crg,crb;
 
@@ -337,15 +339,20 @@ void Timer(int iUnused)
 		
 		//BONUS
 		if (stBonus) 
-			if (bonusXPos>-10) bonusXPos--; else bonusXPos=80+(rand() % 40);
+			if (bonusXPos>-10) bonusXPos--; 
+			else { 
+				stBonus=false; nextBonus+=800;
+				bonusXPos=80+(rand() % 40);
+			}
 		else
-			bonusXPos=-10;
+			bonusXPos=-10; 
 		if ((positionX+5<bonusXPos && positionX+8>=bonusXPos) && positionY>6){
-			score+=500; stBonus=false; bonusXPos=-10;
+			system("canberra-gtk-play -f coin.ogg &");
+			score+=100; stBonus=false; bonusXPos=-10; nextBonus+=800;
 		}
 		//generate bonus
 		crr=255; crg=255; crb=0;
-		if (score > 500 && score%400==0 && !stBonus ){
+		if (score > nextBonus && !stBonus ){
 			srand (time(NULL));
 			bonusXPos=80+(rand() % 40);
 			stBonus=true;
@@ -359,6 +366,12 @@ void Timer(int iUnused)
 			scoreNotif+=500; 
 			system("canberra-gtk-play -f score.ogg &");
 		}		
+		if(stRolling && chRollDeg>-360 && !stOnGround) {
+			chRollDeg-=60; 
+			score+=5;
+		}else{
+			chRollDeg=0;
+		}
 		
 		//DETEKSI COLLISION
 		if (((positionX+4<obsXpos+2 && positionX+9>=obsXpos)
@@ -515,6 +528,9 @@ void processSpecialKeys(int key, int x, int y) {
 			stNunduk=true;
 			stPause = false;
 			break;
+		case GLUT_KEY_RIGHT:
+			stRolling=true;
+		break;
 	}
 }
 
@@ -622,7 +638,6 @@ void drawSunMoon(){
 }
 
 void resetValues(){
-	glEnable (GL_BLEND); glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	stCollision=false;
 	tSpeed=tSpeedMin;
 	positionX=0; positionY=0;
@@ -636,6 +651,7 @@ void resetValues(){
 	tmr=0;
 	nightmode=false;
 	nextNightMode=800;
+	nextBonus=800;
 	generateBintang();
 }
 
@@ -647,6 +663,9 @@ void releaseSpecialKeys(int key, int x, int y) {
 			break;
 		case GLUT_KEY_DOWN:
 			stNunduk = false;
+			break;
+		case GLUT_KEY_RIGHT:
+			stRolling=false;
 			break;
 	}
 }
@@ -708,7 +727,7 @@ void releaseNormalKeys(unsigned char key, int x, int y){
 void display()
 {	
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	
+	glEnable (GL_BLEND); glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	/*
 	glPushMatrix();
 	grid(20,80);
@@ -730,7 +749,7 @@ void display()
 	//debug
 	//~ glPushMatrix();
 	//~ glTranslatef(60,10,-1);
-	//~ strPrint(0,0,255,255,255,GLUT_BITMAP_HELVETICA_18,to_string(tmr)+" "+to_string(nextNightMode));  
+	//~ strPrint(0,0,255,255,255,GLUT_BITMAP_HELVETICA_18,to_string(stBonus));  
 	//~ glPopMatrix();	
 	
 //COLLISION DETECTION
@@ -767,7 +786,13 @@ void display()
 			glTranslatef(positionX,positionY,0);
 		}
 		glTranslatef(chrXpos,1.7,0);
+		if(stRolling && !stOnGround){
+			glTranslatef(3,3,0);
+			glRotatef(chRollDeg,0,0,1);
+			glTranslatef(-3,-3,0);
+		}
 		glScalef(0.4,0.4,0);
+		
 		glColor3ub(79,90,47);
 		//glLineWidth(2);
 		genKarakter(1);	
