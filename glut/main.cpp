@@ -38,7 +38,7 @@ double chrXpos=3.0;
 
 const float tSpeedMin =1.0f, tSpeedMax = 2.0f, tStep=0.1f;
 float tSpeed = tSpeedMin, latarAlpha=1.0, skytmr=0, chRollDeg=0.0; 
-long score=0, scoreNotif=500, hiscore=0, nextNightMode=800, tmr=0
+long score=0, scoreNotif=1000, hiscore=0, nextNightMode=800, tmr=0
 	, nextBonus=800;
 
 unsigned int crr,crg,crb;
@@ -347,7 +347,7 @@ void Timer(int iUnused)
 		else
 			bonusXPos=-10; 
 		if ((positionX+5<bonusXPos && positionX+8>=bonusXPos) && positionY>6){
-			system("canberra-gtk-play -f coin.ogg &");
+			system("play -q coin.ogg &");
 			score+=100; stBonus=false; bonusXPos=-10; nextBonus+=800;
 		}
 		//generate bonus
@@ -363,8 +363,8 @@ void Timer(int iUnused)
 		
 		score+=tSpeed;
 		if (score>scoreNotif) {
-			scoreNotif+=500; 
-			system("canberra-gtk-play -f score.ogg &");
+			scoreNotif+=1000; 
+			system("play -q score.ogg &");
 		}		
 		if(stRolling && chRollDeg>-360 && !stOnGround) {
 			chRollDeg-=60; 
@@ -379,7 +379,7 @@ void Timer(int iUnused)
 		&& positionY<=5) {
 			stCollision = true; tSpeed=0; stRun=false; 
 			if (score>hiscore) hiscore=score;
-			system("canberra-gtk-play -f collision.ogg &");
+			system("play -q collision.ogg &");
 		}
 		
 		//initGuide
@@ -513,7 +513,7 @@ void processSpecialKeys(int key, int x, int y) {
 	switch(key) {
 		case GLUT_KEY_UP:
 			if(stOnGround){
-				system("canberra-gtk-play -f jump.ogg &");
+				system("play -q jump.ogg &");
 				velocityY = -12.0f;
 				stOnGround = false;  
 			}
@@ -646,7 +646,7 @@ void resetValues(){
 	stPause=false;
 	stInitGuide=true;
 	stBonus=false;
-	scoreNotif=500;
+	scoreNotif=1000;
 	score=0;
 	tmr=0;
 	nightmode=false;
@@ -683,7 +683,7 @@ void processNormalKeys(unsigned char key, int x, int y){
 			break;
 		case ' ':		// SPACEBAR
 			if(stOnGround){
-				system("canberra-gtk-play -f jump.ogg &");
+				system("play -q jump.ogg &");
 				velocityY = -12.0f;
 				stOnGround = false;
 			}
@@ -787,9 +787,9 @@ void display()
 		}
 		glTranslatef(chrXpos,1.7,0);
 		if(stRolling && !stOnGround){
-			glTranslatef(3,3,0);
+			glTranslatef(3.1,3.1,0);
 			glRotatef(chRollDeg,0,0,1);
-			glTranslatef(-3,-3,0);
+			glTranslatef(-3.1,-3.1,0);
 		}
 		glScalef(0.4,0.4,0);
 		
