@@ -534,6 +534,36 @@ void processSpecialKeys(int key, int x, int y) {
 	}
 }
 
+void processMouse(int button, int state, int x, int y) {
+	switch(button) {
+		case GLUT_LEFT_BUTTON:
+			if(stOnGround){
+				system("play -q jump.ogg &");
+				velocityY = -12.0f;
+				stOnGround = false;  
+			}
+			if(stInitGuide && stPause) stPause=false;
+			stInitGuide=false;
+			stPause = false;
+			if (state==GLUT_UP){
+				if(velocityY < -8.0f)
+				velocityY = -8.0f;
+			}
+			break;
+		case GLUT_RIGHT_BUTTON:
+			positionY = 0.0;
+			velocityY = 0.0;
+			stOnGround = true;
+			stNunduk=true;
+			stPause = false;
+			if (state==GLUT_UP)stNunduk=false;
+			break;
+		//~ case GLUT_KEY_RIGHT:
+			//~ stRolling=true;
+		break;
+	}
+}
+
 void drawObstacle(int obsId=0){
 	switch (obsId){
 	case 1: // BONUS
@@ -658,8 +688,8 @@ void resetValues(){
 void releaseSpecialKeys(int key, int x, int y) {
 	switch(key) {
 		case GLUT_KEY_UP:
-			if(velocityY < -10.0f)       // If character is still ascending in the jump
-				velocityY = -10.0f;
+			if(velocityY < -8.0f)       // If character is still ascending in the jump
+				velocityY = -8.0f;
 			break;
 		case GLUT_KEY_DOWN:
 			stNunduk = false;
@@ -717,8 +747,8 @@ void releaseNormalKeys(unsigned char key, int x, int y){
 			stRun=!stRun;
 			break;
 		case ' ':		// SPACEBAR
-			if(velocityY < -10.0f)       // If character is still ascending in the jump
-				velocityY = -10.0f;
+			if(velocityY < -8.0f)       // If character is still ascending in the jump
+				velocityY = -8.0f;
 			break;
 		
 	}
@@ -880,7 +910,7 @@ int main(int argc, char **argv)
 	glutKeyboardUpFunc(releaseNormalKeys);
 	glutSpecialFunc(processSpecialKeys);
 	glutSpecialUpFunc(releaseSpecialKeys);
-	//glutMouseFunc(processMouse);
+	glutMouseFunc(processMouse);
 	
 	Timer(0);
 	glutMainLoop();
