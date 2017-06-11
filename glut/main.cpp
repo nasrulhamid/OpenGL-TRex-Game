@@ -28,11 +28,11 @@ float velocityX=4.0f, velocityY=0.0f;     // Velocity of the character
 float gravity = 7.0f;           // How strong is gravity
 bool stOnGround = true, stCollision = false, stInitGuide=true, stPause=false
 	, stBonus=false, stNunduk=false, nightmode=false, stBintangSet=false
-	, stRolling=false;
+	, stRolling=false, bonusSwitch=true;
 
-int obsI=0; 
+int obsI=0, eggId; 
 double obsXpos=100, obsXposmut, obsXpos2=-10, obsXposmut2
-	, bonusXPos=-10;
+	, bonusXPos=-10, bonusSize=1.0;
 double grndXpos;
 double chrXpos=3.0;
 
@@ -43,7 +43,7 @@ long score=0, scoreNotif=1000, hiscore=0, nextNightMode=1200, tmr=0
 
 unsigned int crr,crg,crb;
 
-GLuint tx_obs1, tx_obs2, tx_obs1n, tx_obs2n, tx_awan;
+GLuint tx_obs1, tx_obs2, tx_obs1n, tx_obs2n, tx_awan, egg[3];
 
 struct squares_t{
 	float x,y,w,h;
@@ -61,7 +61,7 @@ void generateAwan(){
 	for(int i=0; i<50; i++){
 		awan[i].x=rand()%200;
 		awan[i].y=rand()%5+13;
-		awan[i].w=rand()%2;
+		awan[i].w=rand()%2+1;
 	}
 }
 
@@ -223,6 +223,24 @@ void load_soil_textures(){
 		SOIL_CREATE_NEW_ID,
 		SOIL_FLAG_MIPMAPS | SOIL_FLAG_INVERT_Y | SOIL_FLAG_COMPRESS_TO_DXT | SOIL_FLAG_MULTIPLY_ALPHA
 	);
+	egg[0] = SOIL_load_OGL_texture(
+		"egg1.png",
+		SOIL_LOAD_AUTO,
+		SOIL_CREATE_NEW_ID,
+		SOIL_FLAG_MIPMAPS | SOIL_FLAG_INVERT_Y | SOIL_FLAG_COMPRESS_TO_DXT | SOIL_FLAG_MULTIPLY_ALPHA
+	);
+	egg[1] = SOIL_load_OGL_texture(
+		"egg2.png",
+		SOIL_LOAD_AUTO,
+		SOIL_CREATE_NEW_ID,
+		SOIL_FLAG_MIPMAPS | SOIL_FLAG_INVERT_Y | SOIL_FLAG_COMPRESS_TO_DXT | SOIL_FLAG_MULTIPLY_ALPHA
+	);
+	egg[2] = SOIL_load_OGL_texture(
+		"egg3.png",
+		SOIL_LOAD_AUTO,
+		SOIL_CREATE_NEW_ID,
+		SOIL_FLAG_MIPMAPS | SOIL_FLAG_INVERT_Y | SOIL_FLAG_COMPRESS_TO_DXT | SOIL_FLAG_MULTIPLY_ALPHA
+	);
 }
 
 void grid(int baris, int kolom) {
@@ -352,14 +370,22 @@ void Timer(int iUnused)
 			}
 		
 		//BONUS
-		if (stBonus) 
-			if (bonusXPos>-10) bonusXPos--; 
+		if (stBonus) {
+			if(bonusSwitch){
+				if (bonusSize<1.3) bonusSize+=0.06; else bonusSwitch=!bonusSwitch;
+			}else {
+				if (bonusSize>1.0) bonusSize-=0.06; else bonusSwitch=!bonusSwitch;
+			}
+			if (bonusXPos>-10) bonusXPos-=0.8; 
 			else { 
 				stBonus=false; nextBonus+=800;
 				bonusXPos=80+(rand() % 40);
 			}
-		else
+		}else{
 			bonusXPos=-10; 
+			eggId=rand()%3+5;
+		}
+			
 		if ((positionX+5<bonusXPos && positionX+8>=bonusXPos) && positionY>6){
 			system("play -q coin.ogg &");
 			score+=100; stBonus=false; bonusXPos=-10; nextBonus+=800;
@@ -404,6 +430,16 @@ void Timer(int iUnused)
 		if(tmr>nextNightMode) {
 			nightmode=!nightmode;
 			nextNightMode += 1200;
+				for (int i=0; i<3;i++){
+					string fl = "egg"+to_string(i+1)+(nightmode?"n":"")+".png";
+					egg[i]=SOIL_load_OGL_texture
+						(
+							fl.c_str(),
+							SOIL_LOAD_AUTO,
+							egg[i],
+							SOIL_FLAG_DDS_LOAD_DIRECT | SOIL_FLAG_INVERT_Y
+						);
+			}
 		}
 		if (nightmode && latarAlpha>0) latarAlpha-=0.05;
 		else if(!nightmode && latarAlpha<1) latarAlpha+=0.05;
@@ -620,6 +656,21 @@ void drawObstacle(int obsId=0){
 		glEnd();
 		glDisable(GL_TEXTURE_2D);
 		break;
+	case 5: case 6: case 7: // EGG
+		glEnable (GL_TEXTURE_2D); 
+		glBindTexture (GL_TEXTURE_2D, egg[obsId-5]);
+		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+		glBegin(GL_POLYGON);
+			glTexCoord2f( 1.0f, 1.0f);	glVertex2f( 0.3, 0.4);
+			glTexCoord2f( 0.0f, 1.0f);	glVertex2f(-0.3, 0.4);
+			glTexCoord2f( 0.0f, 0.0f);	glVertex2f(-0.3,-0.4);
+			glTexCoord2f( 1.0f, 0.0f);	glVertex2f( 0.3,-0.4);
+		glEnd();
+		glDisable(GL_TEXTURE_2D);
+		break;
 	default:
 		glBegin(GL_POLYGON);
 			glVertex2f( 0.5, 0.5);
@@ -809,7 +860,7 @@ void display()
 	//debug
 	//~ glPushMatrix();
 	//~ glTranslatef(60,10,-1);
-	//~ strPrint(0,0,255,255,255,GLUT_BITMAP_HELVETICA_18,to_string(stBonus));  
+	//~ strPrint(0,0,255,255,255,GLUT_BITMAP_HELVETICA_18,to_string(eggId));  
 	//~ glPopMatrix();	
 	
 //COLLISION DETECTION
@@ -834,9 +885,10 @@ void display()
 	//BONUS POINT
 	glPushMatrix();
 		glTranslatef(bonusXPos,15,0);
-		glScalef(2,2,0);
-		glColor3ub(crr,crg,crb);
-		drawObstacle(1);	
+		glScalef(2.0*bonusSize,2.0*bonusSize,1);
+		//~ glColor3ub(crr,crg,crb);
+		glColor3ub(255,255,255);
+		drawObstacle(eggId);	
 	glPopMatrix();	
 	
 	//TREX
@@ -916,9 +968,8 @@ void display()
 		for (int i = 0; i<30; i++){
 			glPushMatrix();
 				glTranslatef(awan[i].x-skytmr,awan[i].y,0);
-				glScalef(2.0*awan[i].w,2.0*awan[i].w,0);
+				glScalef(awan[i].w,awan[i].w,0);
 				glColor3ub(255,255,255);
-				//glLineWidth(2);
 				drawObstacle(4);
 			glPopMatrix();
 		}
