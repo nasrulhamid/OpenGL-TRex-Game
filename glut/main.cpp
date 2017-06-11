@@ -25,7 +25,7 @@ double tmTick=0, tckKika=0;
 
 float positionX=0, positionY=0;     // Position of the character
 float velocityX=4.0f, velocityY=0.0f;     // Velocity of the character
-float gravity = 6.0f;           // How strong is gravity
+float gravity = 7.0f;           // How strong is gravity
 bool stOnGround = true, stCollision = false, stInitGuide=true, stPause=false
 	, stBonus=false, stNunduk=false, nightmode=false, stBintangSet=false
 	, stRolling=false;
@@ -36,18 +36,18 @@ double obsXpos=100, obsXposmut, obsXpos2=-10, obsXposmut2
 double grndXpos;
 double chrXpos=3.0;
 
-const float tSpeedMin =1.0f, tSpeedMax = 2.0f, tStep=0.1f;
+const float tSpeedMin =1.0f, tSpeedMax = 2.3f, tStep=0.1f;
 float tSpeed = tSpeedMin, latarAlpha=1.0, skytmr=0, chRollDeg=0.0; 
-long score=0, scoreNotif=1000, hiscore=0, nextNightMode=800, tmr=0
+long score=0, scoreNotif=1000, hiscore=0, nextNightMode=1200, tmr=0
 	, nextBonus=800;
 
 unsigned int crr,crg,crb;
 
-GLuint tx_obs1, tx_obs2, tx_obs1n, tx_obs2n;
+GLuint tx_obs1, tx_obs2, tx_obs1n, tx_obs2n, tx_awan;
 
 struct squares_t{
 	float x,y,w,h;
-} bintang[50];
+} bintang[50], awan[50];
 
 
 void generateBintang(){
@@ -55,6 +55,13 @@ void generateBintang(){
 		bintang[i].x=rand()%200;
 		bintang[i].y=rand()%16+4;
 		bintang[i].w=rand()%2;
+	}
+}
+void generateAwan(){
+	for(int i=0; i<50; i++){
+		awan[i].x=rand()%200;
+		awan[i].y=rand()%5+13;
+		awan[i].w=rand()%2;
 	}
 }
 
@@ -210,6 +217,12 @@ void load_soil_textures(){
 		SOIL_CREATE_NEW_ID,
 		SOIL_FLAG_MIPMAPS | SOIL_FLAG_INVERT_Y | SOIL_FLAG_COMPRESS_TO_DXT | SOIL_FLAG_MULTIPLY_ALPHA
 	);
+	tx_awan = SOIL_load_OGL_texture(
+		"awan.png",
+		SOIL_LOAD_AUTO,
+		SOIL_CREATE_NEW_ID,
+		SOIL_FLAG_MIPMAPS | SOIL_FLAG_INVERT_Y | SOIL_FLAG_COMPRESS_TO_DXT | SOIL_FLAG_MULTIPLY_ALPHA
+	);
 }
 
 void grid(int baris, int kolom) {
@@ -311,6 +324,7 @@ void Timer(int iUnused)
 	if(!stCollision && !stPause){ 
 		if(stRun && (tckKika>1)){
 			stKika=!stKika;
+			//~ if(stKika) system("play -q walk2.wav &");
 			tckKika=0;
 		}else tckKika++;
 				
@@ -379,7 +393,7 @@ void Timer(int iUnused)
 		&& positionY<=5) {
 			stCollision = true; tSpeed=0; stRun=false; 
 			if (score>hiscore) hiscore=score;
-			system("play -q collision.ogg &");
+			system("play -q collision4.wav &");
 		}
 		
 		//initGuide
@@ -389,7 +403,7 @@ void Timer(int iUnused)
 		tmr++;
 		if(tmr>nextNightMode) {
 			nightmode=!nightmode;
-			nextNightMode += 800;
+			nextNightMode += 1200;
 		}
 		if (nightmode && latarAlpha>0) latarAlpha-=0.05;
 		else if(!nightmode && latarAlpha<1) latarAlpha+=0.05;
@@ -514,7 +528,7 @@ void processSpecialKeys(int key, int x, int y) {
 		case GLUT_KEY_UP:
 			if(stOnGround){
 				system("play -q jump.ogg &");
-				velocityY = -12.0f;
+				velocityY = -13.0f;
 				stOnGround = false;  
 			}
 			if(stInitGuide && stPause) stPause=false;
@@ -539,15 +553,15 @@ void processMouse(int button, int state, int x, int y) {
 		case GLUT_LEFT_BUTTON:
 			if(stOnGround){
 				system("play -q jump.ogg &");
-				velocityY = -12.0f;
+				velocityY = -13.0f;
 				stOnGround = false;  
 			}
 			if(stInitGuide && stPause) stPause=false;
 			stInitGuide=false;
 			stPause = false;
 			if (state==GLUT_UP){
-				if(velocityY < -8.0f)
-				velocityY = -8.0f;
+				if(velocityY < -8.5f)
+				velocityY = -8.5f;
 			}
 			break;
 		case GLUT_RIGHT_BUTTON:
@@ -588,6 +602,21 @@ void drawObstacle(int obsId=0){
 			glTexCoord2f( 0.0f, 1.0f);	glVertex2f(-0.5, 0.5);
 			glTexCoord2f( 0.0f, 0.0f);	glVertex2f(-0.5,-0.5);
 			glTexCoord2f( 1.0f, 0.0f);	glVertex2f( 0.5,-0.5);
+		glEnd();
+		glDisable(GL_TEXTURE_2D);
+		break;
+	case 4: // AWAN
+		glEnable (GL_TEXTURE_2D); 
+		glBindTexture (GL_TEXTURE_2D, tx_awan);
+		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+		glBegin(GL_POLYGON);
+			glTexCoord2f( 1.0f, 1.0f);	glVertex2f( 1.0, 0.5);
+			glTexCoord2f( 0.0f, 1.0f);	glVertex2f(-1.0, 0.5);
+			glTexCoord2f( 0.0f, 0.0f);	glVertex2f(-1.0,-0.5);
+			glTexCoord2f( 1.0f, 0.0f);	glVertex2f( 1.0,-0.5);
 		glEnd();
 		glDisable(GL_TEXTURE_2D);
 		break;
@@ -680,16 +709,17 @@ void resetValues(){
 	score=0;
 	tmr=0;
 	nightmode=false;
-	nextNightMode=800;
+	nextNightMode=1200;
 	nextBonus=800;
 	generateBintang();
+	generateAwan();
 }
 
 void releaseSpecialKeys(int key, int x, int y) {
 	switch(key) {
 		case GLUT_KEY_UP:
-			if(velocityY < -8.0f)       // If character is still ascending in the jump
-				velocityY = -8.0f;
+			if(velocityY < -8.5f)       // If character is still ascending in the jump
+				velocityY = -8.5f;
 			break;
 		case GLUT_KEY_DOWN:
 			stNunduk = false;
@@ -714,7 +744,7 @@ void processNormalKeys(unsigned char key, int x, int y){
 		case ' ':		// SPACEBAR
 			if(stOnGround){
 				system("play -q jump.ogg &");
-				velocityY = -12.0f;
+				velocityY = -13.0f;
 				stOnGround = false;
 			}
 			if(stInitGuide && stPause) stPause=false;
@@ -747,8 +777,8 @@ void releaseNormalKeys(unsigned char key, int x, int y){
 			stRun=!stRun;
 			break;
 		case ' ':		// SPACEBAR
-			if(velocityY < -8.0f)       // If character is still ascending in the jump
-				velocityY = -8.0f;
+			if(velocityY < -8.5f)       // If character is still ascending in the jump
+				velocityY = -8.5f;
 			break;
 		
 	}
@@ -879,6 +909,17 @@ void display()
 				glColor3ub(255,255,255);
 				//glLineWidth(2);
 				drawStar();
+			glPopMatrix();
+		}
+	}else if (!nightmode && latarAlpha>=1.0){
+		//awan
+		for (int i = 0; i<30; i++){
+			glPushMatrix();
+				glTranslatef(awan[i].x-skytmr,awan[i].y,0);
+				glScalef(2.0*awan[i].w,2.0*awan[i].w,0);
+				glColor3ub(255,255,255);
+				//glLineWidth(2);
+				drawObstacle(4);
 			glPopMatrix();
 		}
 	}
