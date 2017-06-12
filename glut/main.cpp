@@ -430,20 +430,20 @@ void Timer(int iUnused)
 		if(tmr>nextNightMode) {
 			nightmode=!nightmode;
 			nextNightMode += 1200;
-				for (int i=0; i<3;i++){
-					string fl = "egg"+to_string(i+1)+(nightmode?"n":"")+".png";
-					egg[i]=SOIL_load_OGL_texture
-						(
-							fl.c_str(),
-							SOIL_LOAD_AUTO,
-							egg[i],
-							SOIL_FLAG_DDS_LOAD_DIRECT | SOIL_FLAG_INVERT_Y
-						);
+			for (int i=0; i<3;i++){
+				string fl = "egg"+to_string(i+1)+(nightmode?"n":"")+".png";
+				egg[i]=SOIL_load_OGL_texture
+					(
+						fl.c_str(),
+						SOIL_LOAD_AUTO,
+						egg[i],
+						SOIL_FLAG_DDS_LOAD_DIRECT | SOIL_FLAG_INVERT_Y
+					);
 			}
 		}
 		if (nightmode && latarAlpha>0) latarAlpha-=0.05;
 		else if(!nightmode && latarAlpha<1) latarAlpha+=0.05;
-		if (skytmr<100) skytmr+=0.025; else skytmr=0;
+		if (skytmr<100) skytmr+=0.05*tSpeed; else skytmr=0;
 		
 	}else{
 		if (chrXpos==3) chrXpos=2.5; else chrXpos=3;
@@ -764,6 +764,17 @@ void resetValues(){
 	nextBonus=800;
 	generateBintang();
 	generateAwan();
+	
+	for (int i=0; i<3;i++){
+		string fl = "egg"+to_string(i+1)+(nightmode?"n":"")+".png";
+		egg[i]=SOIL_load_OGL_texture
+			(
+				fl.c_str(),
+				SOIL_LOAD_AUTO,
+				egg[i],
+				SOIL_FLAG_DDS_LOAD_DIRECT | SOIL_FLAG_INVERT_Y
+			);
+	}
 }
 
 void releaseSpecialKeys(int key, int x, int y) {
@@ -963,7 +974,7 @@ void display()
 				drawStar();
 			glPopMatrix();
 		}
-	}else if (!nightmode && latarAlpha>=1.0){
+	}else if (!nightmode && latarAlpha>0.9){
 		//awan
 		for (int i = 0; i<30; i++){
 			glPushMatrix();
