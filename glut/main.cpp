@@ -5,7 +5,7 @@
  * G64164021	MUHAMMAD JAKA UTAMA
  * G64164053	ISMAIL ADIMA
  * 
- * Geanie Build Command Parameter: g++ -Wall -o "%e" "%f" -lSOIL -lglut -lGL -lGLU
+ * Geany Build Command Parameter: g++ -Wall -o "%e" "%f" -lSOIL -lglut -lGL -lGLU
  */
 
 #include <iostream>
@@ -25,7 +25,7 @@ double tmTick=0, tckKika=0;
 
 float positionX=0, positionY=0;     // Position of the character
 float velocityX=4.0f, velocityY=0.0f;     // Velocity of the character
-float gravity = 7.0f;           // How strong is gravity
+float gravity = 9.8f;           // How strong is gravity
 bool stOnGround = true, stCollision = false, stInitGuide=true, stPause=false
 	, stBonus=false, stNunduk=false, nightmode=false, stBintangSet=false
 	, stRolling=false, bonusSwitch=true;
@@ -564,7 +564,7 @@ void processSpecialKeys(int key, int x, int y) {
 		case GLUT_KEY_UP:
 			if(stOnGround){
 				system("play -q jump.ogg &");
-				velocityY = -13.0f;
+				velocityY = -16.0f;
 				stOnGround = false;  
 			}
 			if(stInitGuide && stPause) stPause=false;
@@ -589,15 +589,15 @@ void processMouse(int button, int state, int x, int y) {
 		case GLUT_LEFT_BUTTON:
 			if(stOnGround){
 				system("play -q jump.ogg &");
-				velocityY = -13.0f;
+				velocityY = -16.0f;
 				stOnGround = false;  
 			}
 			if(stInitGuide && stPause) stPause=false;
 			stInitGuide=false;
 			stPause = false;
 			if (state==GLUT_UP){
-				if(velocityY < -8.5f)
-				velocityY = -8.5f;
+				if(velocityY < -10.0f)
+				velocityY = -10.0f;
 			}
 			break;
 		case GLUT_RIGHT_BUTTON:
@@ -780,8 +780,8 @@ void resetValues(){
 void releaseSpecialKeys(int key, int x, int y) {
 	switch(key) {
 		case GLUT_KEY_UP:
-			if(velocityY < -8.5f)       // If character is still ascending in the jump
-				velocityY = -8.5f;
+			if(velocityY < -10.0f)       // If character is still ascending in the jump
+				velocityY = -10.0f;
 			break;
 		case GLUT_KEY_DOWN:
 			stNunduk = false;
@@ -806,7 +806,7 @@ void processNormalKeys(unsigned char key, int x, int y){
 		case ' ':		// SPACEBAR
 			if(stOnGround){
 				system("play -q jump.ogg &");
-				velocityY = -13.0f;
+				velocityY = -16.0f;
 				stOnGround = false;
 			}
 			if(stInitGuide && stPause) stPause=false;
@@ -839,8 +839,8 @@ void releaseNormalKeys(unsigned char key, int x, int y){
 			stRun=!stRun;
 			break;
 		case ' ':		// SPACEBAR
-			if(velocityY < -8.5f)       // If character is still ascending in the jump
-				velocityY = -8.5f;
+			if(velocityY < -10.0f)       // If character is still ascending in the jump
+				velocityY = -10.0f;
 			break;
 		
 	}
